@@ -6,6 +6,7 @@ import _path_setup
 from card_game_ai.game.actions import DiscardAction, HintColorAction, PlayAction
 from card_game_ai.game.cards import Card, Color, MAX_HINT_TOKENS, Rank
 from card_game_ai.game.engine import HanabiGameEngine
+from card_game_ai.game.observation import get_definitely_playable_card_indices
 
 
 class HanabiGameEngineTests(unittest.TestCase):
@@ -57,6 +58,18 @@ class HanabiGameEngineTests(unittest.TestCase):
         self.assertIn(Card(Color.BLUE, Rank.THREE), engine.discard_pile)
         self.assertEqual(engine.fireworks[Color.BLUE], 0)
 
+    def test_game_is_lost_when_shared_lives_reach_zero(self) -> None:
+        engine = HanabiGameEngine(player_count=2, seed=14)
+        engine.strike_tokens = 2
+        engine.hands[0][0] = Card(Color.GREEN, Rank.THREE)
+
+        result = engine.step(PlayAction(card_index=0))
+
+        self.assertFalse(result.play_succeeded)
+        self.assertEqual(engine.strike_tokens, 3)
+        self.assertTrue(engine.is_terminal())
+        self.assertTrue(result.game_over)
+
     def test_playing_correct_card_advances_fireworks(self) -> None:
         engine = HanabiGameEngine(player_count=2, seed=5)
         engine.hands[0][0] = Card(Color.RED, Rank.ONE)
@@ -77,6 +90,31 @@ class HanabiGameEngineTests(unittest.TestCase):
         self.assertEqual(observation.other_player_hands[0].player_id, 1)
         self.assertFalse(hasattr(observation.hand_knowledge[0], "color"))
         self.assertFalse(hasattr(observation.hand_knowledge[0], "rank"))
+
+    def test_definitely_playable_indices_use_partial_knowledge_only(self) -> None:
+        engine = HanabiGameEngine(player_count=2, seed=15)
+        engine.fireworks[Color.RED] = 1
+        engine.fireworks[Color.BLUE] = 2
+
+        engine.knowledge_by_player[0][0] = engine.knowledge_by_player[0][0].__class__(
+            possible_colors=frozenset({Color.RED}),
+            possible_ranks=frozenset({Rank.TWO}),
+            hinted_color=Color.RED,
+            hinted_rank=Rank.TWO,
+        )
+        engine.knowledge_by_player[0][1] = engine.knowledge_by_player[0][1].__class__(
+            possible_colors=frozenset({Color.RED, Color.BLUE}),
+            possible_ranks=frozenset({Rank.TWO, Rank.THREE}),
+            hinted_color=None,
+            hinted_rank=None,
+        )
+
+        observation = engine.get_observation(0)
+        definitely_playable = get_definitely_playable_card_indices(
+            observation.hand_knowledge, observation.fireworks
+        )
+
+        self.assertEqual(definitely_playable, (0,))
 
 
 if __name__ == "__main__":

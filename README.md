@@ -34,6 +34,7 @@ The repository already includes a first working vertical slice:
 ```text
 src/card_game_ai/
 |- agents/
+|  |- heuristic_agent.py
 |  `- random_agent.py
 |- game/
 |  |- actions.py
@@ -43,6 +44,24 @@ src/card_game_ai/
 |  `- rules.py
 `- training/
    `- self_play.py
+```
+
+## Architecture At A Glance
+
+```text
+engine (real game state)
+   |
+   v
+observation builder (partial information)
+   |
+   v
+agent.act(observation)
+   |
+   v
+action
+   |
+   v
+engine.step(action)
 ```
 
 ### `game/cards.py`
@@ -80,6 +99,9 @@ Contains pure helpers for:
 - Hint-token constraints
 - Discard legality
 
+The game uses 3 shared lives. A life is only lost when a player tries to play a
+card that does not fit the current fireworks. When lives reach 0, the game is lost.
+
 ### `game/observation.py`
 
 Builds the partial view for one player and tracks hidden-hand knowledge:
@@ -88,6 +110,8 @@ Builds the partial view for one player and tracks hidden-hand knowledge:
 - Other players' real cards are visible
 - Public state is included
 - Legal actions are included for the active player
+- Safe-play helpers can detect own-hand indices that are guaranteed playable
+  from current knowledge alone
 
 ### `game/engine.py`
 
@@ -114,6 +138,15 @@ The engine currently supports:
 
 Baseline agent that samples uniformly from legal actions.
 
+### `agents/heuristic_agent.py`
+
+Rule-based baseline that only uses partial observations. Its current priorities are:
+
+- Play a card that is guaranteed playable from current knowledge
+- Give a hint if another player's visible card is immediately playable
+- Discard if possible
+- Fall back to a play action if no better option exists
+
 ### `training/self_play.py`
 
 Runs a full game between agents and returns a compact summary:
@@ -124,6 +157,14 @@ Runs a full game between agents and returns a compact summary:
 - Strike count
 - Deck size
 - Win/loss flags
+
+### `visualization/cli.py`
+
+Provides text-based renderers for:
+
+- Full omniscient game state
+- One player's partial observation
+- Cards, fireworks, and actions in compact debug-friendly form
 
 ## Tests
 
@@ -173,11 +214,53 @@ result = run_self_play_game(agents, seed=3)
 print(result)
 ```
 
+## Example: CLI Visualization
+
+```python
+from card_game_ai.game.engine import HanabiGameEngine
+from card_game_ai.visualization.cli import render_game_state, render_player_observation
+
+engine = HanabiGameEngine(player_count=2, seed=7)
+
+print(render_game_state(engine))
+print()
+print(render_player_observation(engine.get_observation(0)))
+```
+
+## Example: Self-Play Trace
+
+```python
+from card_game_ai.agents.random_agent import RandomAgent
+from card_game_ai.training.self_play import run_self_play_game_with_trace
+
+agents = [RandomAgent(seed=1), RandomAgent(seed=2)]
+traced_game = run_self_play_game_with_trace(agents, seed=3)
+
+print(traced_game.trace)
+```
+
+You can also run the reusable demo script:
+
+```powershell
+.venv\Scripts\python.exe scripts\demo_trace.py
+```
+
+Use the heuristic baseline instead of the random one:
+
+```powershell
+.venv\Scripts\python.exe scripts\demo_trace.py --agent heuristic
+```
+
+Example with more players and explicit seeds:
+
+```powershell
+.venv\Scripts\python.exe scripts\demo_trace.py --agent heuristic --players 4 --game-seed 7 --agent-seed-base 10
+```
+
 ## Next Steps
 
 Planned next milestones:
 
-- Add a heuristic agent
 - Improve observation-side card knowledge modeling
 - Add more engine and edge-case tests
 - Build training utilities on top of self-play

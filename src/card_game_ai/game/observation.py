@@ -35,6 +35,25 @@ class PlayerObservation:
     legal_actions: tuple[Action, ...]
 
 
+def get_definitely_playable_card_indices(
+    hand_knowledge: tuple[CardKnowledge, ...], fireworks: Fireworks
+) -> tuple[int, ...]:
+    """
+    Return own-hand indices that are guaranteed playable from current knowledge.
+
+    A card is considered definitely playable only if every remaining
+    color/rank combination compatible with the player's knowledge would be
+    playable on the current fireworks.
+    """
+    playable_indices: list[int] = []
+
+    for index, knowledge in enumerate(hand_knowledge):
+        if _knowledge_is_definitely_playable(knowledge, fireworks):
+            playable_indices.append(index)
+
+    return tuple(playable_indices)
+
+
 def create_initial_card_knowledge() -> CardKnowledge:
     """
     Build the default knowledge state for a newly dealt hidden card.
@@ -148,3 +167,23 @@ def build_player_observation(
         deck_size=deck_size,
         legal_actions=tuple(legal_actions),
     )
+
+
+def _knowledge_is_definitely_playable(
+    knowledge: CardKnowledge, fireworks: Fireworks
+) -> bool:
+    possible_cards = [
+        Card(color=color, rank=rank)
+        for color in knowledge.possible_colors
+        for rank in knowledge.possible_ranks
+    ]
+
+    if not possible_cards:
+        return False
+
+    for card in possible_cards:
+        next_required_rank = fireworks.get(card.color, 0) + 1
+        if int(card.rank) != next_required_rank:
+            return False
+
+    return True
