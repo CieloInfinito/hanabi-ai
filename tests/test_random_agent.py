@@ -9,6 +9,7 @@ from card_game_ai.game.engine import HanabiGameEngine
 
 class RandomAgentTests(unittest.TestCase):
     def test_random_agent_returns_legal_action(self) -> None:
+        # Verifies that the random baseline never returns an illegal move.
         engine = HanabiGameEngine(player_count=2, seed=7)
         observation = engine.get_observation(0)
         agent = RandomAgent(seed=11)

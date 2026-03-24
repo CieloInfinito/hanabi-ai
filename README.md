@@ -143,9 +143,17 @@ Baseline agent that samples uniformly from legal actions.
 Rule-based baseline that only uses partial observations. Its current priorities are:
 
 - Play a card that is guaranteed playable from current knowledge
-- Give a hint if another player's visible card is immediately playable
-- Discard if possible
-- Fall back to a play action if no better option exists
+- Otherwise, give the most useful legal hint to another player
+- Otherwise, choose the safest available discard
+- Avoid blind plays whenever a discard is legal
+- If forced to play, choose the own-hand card with the highest inferred
+  probability of being playable
+
+The heuristic agent also refines its own-hand inferences using public information:
+
+- Visible teammate hands
+- Current fireworks
+- Discarded cards
 
 ### `training/self_play.py`
 

@@ -15,6 +15,7 @@ from card_game_ai.visualization.cli import (
 
 class VisualizationCliTests(unittest.TestCase):
     def test_render_game_state_includes_public_summary_and_real_hands(self) -> None:
+        # Verifies that full-state rendering includes public status and omniscient hands.
         engine = HanabiGameEngine(player_count=2, seed=21)
         engine.hands[0][0] = Card(Color.RED, Rank.ONE)
 
@@ -27,6 +28,7 @@ class VisualizationCliTests(unittest.TestCase):
         self.assertIn("R1", rendered)
 
     def test_render_player_observation_hides_own_real_cards(self) -> None:
+        # Verifies that observation rendering shows knowledge-only data for the viewer's hand.
         engine = HanabiGameEngine(player_count=2, seed=22)
         engine.hands[0][0] = Card(Color.RED, Rank.ONE)
         observation = engine.get_observation(0)
@@ -41,6 +43,7 @@ class VisualizationCliTests(unittest.TestCase):
         self.assertNotIn("Player 0: R1", rendered)
 
     def test_render_player_observation_lists_legal_actions(self) -> None:
+        # Verifies that observation rendering lists the current legal actions.
         engine = HanabiGameEngine(player_count=2, seed=23)
         observation = engine.get_observation(0)
 
@@ -50,6 +53,7 @@ class VisualizationCliTests(unittest.TestCase):
         self.assertIn(str(PlayAction(card_index=0)), rendered)
 
     def test_render_step_result_includes_action_and_score(self) -> None:
+        # Verifies that step-result rendering includes the chosen action and updated score.
         engine = HanabiGameEngine(player_count=2, seed=24)
         result = engine.step(PlayAction(card_index=0))
 

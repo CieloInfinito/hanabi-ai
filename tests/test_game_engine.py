@@ -11,6 +11,7 @@ from card_game_ai.game.observation import get_definitely_playable_card_indices
 
 class HanabiGameEngineTests(unittest.TestCase):
     def test_reset_deals_correct_initial_hands(self) -> None:
+        # Verifies that a fresh reset creates the standard two-player opening state.
         engine = HanabiGameEngine(player_count=2, seed=1)
 
         self.assertEqual(engine.current_player, 0)
@@ -22,6 +23,7 @@ class HanabiGameEngineTests(unittest.TestCase):
         self.assertEqual(engine.strike_tokens, 0)
 
     def test_hand_size_depends_on_player_count(self) -> None:
+        # Verifies that hand size follows standard Hanabi rules for 2 to 5 players.
         two_player_engine = HanabiGameEngine(player_count=2, seed=10)
         three_player_engine = HanabiGameEngine(player_count=3, seed=11)
         four_player_engine = HanabiGameEngine(player_count=4, seed=12)
@@ -33,6 +35,7 @@ class HanabiGameEngineTests(unittest.TestCase):
         self.assertTrue(all(len(hand) == 4 for hand in five_player_engine.hands))
 
     def test_cannot_give_hint_without_hint_tokens(self) -> None:
+        # Verifies that hint actions disappear when no hint tokens remain.
         engine = HanabiGameEngine(player_count=2, seed=2)
         engine.hint_tokens = 0
 
@@ -41,6 +44,7 @@ class HanabiGameEngineTests(unittest.TestCase):
         self.assertFalse(any(isinstance(action, HintColorAction) for action in legal_actions))
 
     def test_cannot_discard_when_hint_tokens_are_full(self) -> None:
+        # Verifies that discard actions are illegal while hint tokens are already full.
         engine = HanabiGameEngine(player_count=2, seed=3)
 
         legal_actions = engine.get_legal_actions(0)
@@ -48,6 +52,7 @@ class HanabiGameEngineTests(unittest.TestCase):
         self.assertFalse(any(isinstance(action, DiscardAction) for action in legal_actions))
 
     def test_playing_incorrect_card_adds_strike_and_discards_card(self) -> None:
+        # Verifies that an incorrect play costs a strike and sends the card to discards.
         engine = HanabiGameEngine(player_count=2, seed=4)
         engine.hands[0][0] = Card(Color.BLUE, Rank.THREE)
 
@@ -59,6 +64,7 @@ class HanabiGameEngineTests(unittest.TestCase):
         self.assertEqual(engine.fireworks[Color.BLUE], 0)
 
     def test_game_is_lost_when_shared_lives_reach_zero(self) -> None:
+        # Verifies that the game ends immediately once the shared strike limit is reached.
         engine = HanabiGameEngine(player_count=2, seed=14)
         engine.strike_tokens = 2
         engine.hands[0][0] = Card(Color.GREEN, Rank.THREE)
@@ -71,6 +77,7 @@ class HanabiGameEngineTests(unittest.TestCase):
         self.assertTrue(result.game_over)
 
     def test_playing_correct_card_advances_fireworks(self) -> None:
+        # Verifies that a correct play advances the matching firework stack and score.
         engine = HanabiGameEngine(player_count=2, seed=5)
         engine.hands[0][0] = Card(Color.RED, Rank.ONE)
 
@@ -81,6 +88,7 @@ class HanabiGameEngineTests(unittest.TestCase):
         self.assertEqual(engine.get_score(), 1)
 
     def test_observation_hides_real_cards_from_observing_player(self) -> None:
+        # Verifies that player observations expose knowledge, not the observer's real cards.
         engine = HanabiGameEngine(player_count=2, seed=6)
 
         observation = engine.get_observation(0)
@@ -92,6 +100,7 @@ class HanabiGameEngineTests(unittest.TestCase):
         self.assertFalse(hasattr(observation.hand_knowledge[0], "rank"))
 
     def test_definitely_playable_indices_use_partial_knowledge_only(self) -> None:
+        # Verifies that definitely-playable detection depends only on public knowledge.
         engine = HanabiGameEngine(player_count=2, seed=15)
         engine.fireworks[Color.RED] = 1
         engine.fireworks[Color.BLUE] = 2

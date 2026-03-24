@@ -12,6 +12,7 @@ from card_game_ai.training.self_play import (
 
 class SelfPlayTests(unittest.TestCase):
     def test_run_self_play_game_completes_with_random_agents(self) -> None:
+        # Verifies that a full self-play game runs to completion and returns sane summary values.
         agents = [RandomAgent(seed=1), RandomAgent(seed=2)]
 
         result = run_self_play_game(agents, seed=3)
@@ -24,10 +25,12 @@ class SelfPlayTests(unittest.TestCase):
         self.assertGreaterEqual(result.strike_tokens, 0)
 
     def test_run_self_play_game_rejects_invalid_agent_count(self) -> None:
+        # Verifies that self-play enforces the supported minimum player count.
         with self.assertRaises(ValueError):
             run_self_play_game([RandomAgent(seed=1)], seed=2)
 
     def test_run_self_play_game_with_trace_returns_readable_trace(self) -> None:
+        # Verifies that traced self-play returns a human-readable trace with key sections.
         agents = [RandomAgent(seed=4), RandomAgent(seed=5)]
 
         traced_result = run_self_play_game_with_trace(agents, seed=6)
