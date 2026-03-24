@@ -1,0 +1,142 @@
+# Architecture
+
+## Project Principles
+
+This project treats Hanabi as an imperfect-information cooperative game. The
+most important architectural rule is to keep these three layers separate:
+
+- Real game state: the omniscient state owned by the engine
+- Player observation: the partial information visible to one player
+- Agent logic: decision-making based only on the observation
+
+If an agent can access hidden information, training and evaluation become
+invalid.
+
+## Source Layout
+
+```text
+src/hanabi_ai/
+|- agents/
+|  |- heuristic/
+|  |  |- base.py
+|  |  |- basic.py
+|  |  `- conservative.py
+|  `- random.py
+|- game/
+|  |- actions.py
+|  |- cards.py
+|  |- engine.py
+|  |- observation.py
+|  `- rules.py
+|- tools/
+|  |- demo_basic_trace.py
+|  |- demo_conservative_trace.py
+|  `- evaluate_agents.py
+|- training/
+|  `- self_play.py
+`- visualization/
+   `- cli.py
+```
+
+## Architecture At A Glance
+
+```text
+engine (real game state)
+   |
+   v
+observation builder (partial information)
+   |
+   v
+agent.act(observation)
+   |
+   v
+action
+   |
+   v
+engine.step(action)
+```
+
+## Core Modules
+
+### `game/cards.py`
+
+Defines:
+
+- `Color`
+- `Rank`
+- `Card`
+- Standard Hanabi deck construction
+- Hand-size rules by player count
+- Game-wide constants such as max hint and strike tokens
+
+Hand sizes follow standard Hanabi rules:
+
+- 2 or 3 players: 5-card hands
+- 4 or 5 players: 4-card hands
+
+### `game/actions.py`
+
+Defines explicit typed actions:
+
+- `PlayAction`
+- `DiscardAction`
+- `HintColorAction`
+- `HintRankAction`
+
+### `game/rules.py`
+
+Contains pure helpers for:
+
+- Playability checks
+- Score computation
+- Win/loss checks
+- Hint-token constraints
+- Discard legality
+
+The game uses 3 shared lives. A life is only lost when a player tries to play a
+card that does not fit the current fireworks. When lives reach 0, the game is lost.
+
+### `game/observation.py`
+
+Builds the partial view for one player and tracks hidden-hand knowledge:
+
+- Own real cards are not exposed
+- Other players' real cards are visible
+- Public state is included
+- Legal actions are included for the active player
+- Safe-play helpers can detect own-hand indices that are guaranteed playable
+  from current knowledge alone
+
+### `game/engine.py`
+
+Implements the omniscient Hanabi state and core API:
+
+- `reset()`
+- `step(action)`
+- `get_legal_actions(player_id)`
+- `get_observation(player_id)`
+- `is_terminal()`
+- `get_score()`
+
+The engine currently supports:
+
+- Standard deck shuffling
+- Dealing
+- Playing, discarding, and giving hints
+- Strike tracking
+- Hint-token spending and recovery
+- Final-round countdown after the deck is exhausted
+- Per-turn history records
+
+### `training/self_play.py`
+
+Runs full games between agents and exposes compact summaries and aggregate
+evaluation helpers.
+
+### `visualization/cli.py`
+
+Provides text-based renderers for:
+
+- Full omniscient game state
+- One player's partial observation
+- Cards, fireworks, and actions in compact debug-friendly form

@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hanabi-ai"
+version = "0.1.0"
+description = "Hanabi engine, heuristic agents, and self-play tooling."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [
+  { name = "Hanabi AI contributors" }
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "ipykernel",
+  "jupyter",
+]
+
+[project.scripts]
+hanabi-demo-basic = "hanabi_ai.tools.demo_basic_trace:main"
+hanabi-demo-conservative = "hanabi_ai.tools.demo_conservative_trace:main"
+hanabi-evaluate = "hanabi_ai.tools.evaluate_agents:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
