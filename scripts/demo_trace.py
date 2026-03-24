@@ -11,7 +11,9 @@ SRC_PATH = PROJECT_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from card_game_ai.agents.heuristic_agent import HeuristicAgent
+from card_game_ai.agents.heuristic.conservative_agent import (
+    ConservativeHeuristicAgent,
+)
 from card_game_ai.agents.random_agent import RandomAgent
 from card_game_ai.training.self_play import run_self_play_game_with_trace
 
@@ -22,7 +24,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--agent",
-        choices=("random", "heuristic"),
+        choices=("random", "conservative", "heuristic"),
         default="random",
         help="Agent type to use for all players.",
     )
@@ -62,8 +64,8 @@ def main() -> None:
 def _build_agent(agent_name: str, seed: int):
     if agent_name == "random":
         return RandomAgent(seed=seed)
-    if agent_name == "heuristic":
-        return HeuristicAgent()
+    if agent_name in ("conservative", "heuristic"):
+        return ConservativeHeuristicAgent()
     raise ValueError(f"Unsupported agent type: {agent_name}.")
 
 

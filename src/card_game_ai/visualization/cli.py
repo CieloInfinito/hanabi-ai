@@ -150,6 +150,13 @@ def render_player_observation(observation: PlayerObservation) -> str:
         + (str(definitely_playable) if definitely_playable else "-")
     )
 
+    if observation.public_history:
+        last_record = observation.public_history[-1]
+        lines.append(
+            "Last public action: "
+            f"Player {last_record.player_id} -> {render_action(last_record.action)}"
+        )
+
     if observation.legal_actions:
         lines.append("Legal actions:")
         for index, action in enumerate(observation.legal_actions):

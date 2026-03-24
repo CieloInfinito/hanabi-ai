@@ -34,7 +34,9 @@ The repository already includes a first working vertical slice:
 ```text
 src/card_game_ai/
 |- agents/
-|  |- heuristic_agent.py
+|  |- heuristic/
+|  |  |- basic_agent.py
+|  |  `- conservative_agent.py
 |  `- random_agent.py
 |- game/
 |  |- actions.py
@@ -138,9 +140,20 @@ The engine currently supports:
 
 Baseline agent that samples uniformly from legal actions.
 
-### `agents/heuristic_agent.py`
+### `agents/heuristic/basic_agent.py`
 
-Rule-based baseline that only uses partial observations. Its current priorities are:
+Rule-based baseline that only uses partial observations and simple public
+deductions, without any private hint-ordering conventions.
+
+### `agents/heuristic/conservative_agent.py`
+
+Variant of the basic heuristic baseline that keeps the same local priorities but
+adds two private communication conventions:
+
+- Color hints are pointed in ascending rank order
+- Rank hints are grouped by immediate playability first, then non-playability
+
+Shared priorities:
 
 - Play a card that is guaranteed playable from current knowledge
 - Otherwise, give the most useful legal hint to another player
@@ -149,11 +162,16 @@ Rule-based baseline that only uses partial observations. Its current priorities 
 - If forced to play, choose the own-hand card with the highest inferred
   probability of being playable
 
-The heuristic agent also refines its own-hand inferences using public information:
+All heuristic agents in this family refine their own-hand inferences using
+public information:
 
 - Visible teammate hands
 - Current fireworks
 - Discarded cards
+
+The shared heuristic tests cover this in practice for every heuristic agent in
+the family, including cases where visible teammate hands, current fireworks,
+and discarded cards change what the agent can safely infer.
 
 ### `training/self_play.py`
 
@@ -187,6 +205,16 @@ The current test suite covers core invariants:
 - Player observations do not expose own real cards
 - Random agent always returns a legal action
 - Self-play completes successfully
+
+Heuristic-agent tests are organized by responsibility:
+
+- `tests/heuristic/_shared.py` checks the baseline decision logic that every
+  heuristic agent in the family should satisfy.
+- `tests/heuristic/test_basic_agent.py` checks that the basic heuristic does
+  not emit or interpret any private hint-ordering conventions.
+- `tests/heuristic/test_conservative_agent.py` checks that the conservative
+  heuristic emits and interprets its private color-order and
+  rank-playability conventions.
 
 Run the full suite with:
 
@@ -253,17 +281,35 @@ You can also run the reusable demo script:
 .venv\Scripts\python.exe scripts\demo_trace.py
 ```
 
-Use the heuristic baseline instead of the random one:
+Use the conservative heuristic baseline instead of the random one:
 
 ```powershell
-.venv\Scripts\python.exe scripts\demo_trace.py --agent heuristic
+.venv\Scripts\python.exe scripts\demo_trace.py --agent conservative
 ```
 
 Example with more players and explicit seeds:
 
 ```powershell
-.venv\Scripts\python.exe scripts\demo_trace.py --agent heuristic --players 4 --game-seed 7 --agent-seed-base 10
+.venv\Scripts\python.exe scripts\demo_trace.py --agent conservative --players 4 --game-seed 7 --agent-seed-base 10
 ```
+
+## Example: Agent Evaluation
+
+Run a batched comparison between the basic heuristic, the conservative
+heuristic, and the random baseline:
+
+```powershell
+.venv\Scripts\python.exe scripts\evaluate_agents.py --players 2 --games 200
+```
+
+The evaluation reports:
+
+- Average score
+- Minimum and maximum score
+- Average turn count
+- Win rate
+- Loss rate
+- Delta versus the random baseline
 
 ## Next Steps
 

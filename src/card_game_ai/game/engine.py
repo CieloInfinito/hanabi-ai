@@ -5,10 +5,14 @@ from random import Random
 
 from .actions import (
     Action,
+    ActionLike,
     DiscardAction,
+    HintPresentation,
     HintColorAction,
     HintRankAction,
     PlayAction,
+    is_hint_action,
+    normalize_agent_decision,
 )
 from .cards import (
     MAX_HINT_TOKENS,
@@ -21,6 +25,7 @@ from .cards import (
 from .observation import (
     CardKnowledge,
     PlayerObservation,
+    PublicTurnRecord,
     apply_color_hint_to_knowledge,
     apply_rank_hint_to_knowledge,
     build_player_observation,
@@ -45,6 +50,8 @@ class TurnRecord:
     action: Action
     removed_card: Card | None = None
     revealed_indices: tuple[int, ...] = ()
+    revealed_groups: tuple[tuple[int, ...], ...] = ()
+    fireworks_before: dict[Color, int] | None = None
     play_succeeded: bool | None = None
     drew_replacement: bool = False
 
@@ -55,6 +62,8 @@ class EngineStepResult:
     action: Action
     removed_card: Card | None
     revealed_indices: tuple[int, ...]
+    revealed_groups: tuple[tuple[int, ...], ...]
+    fireworks_before: dict[Color, int] | None
     play_succeeded: bool | None
     drew_replacement: bool
     score: int
@@ -117,22 +126,28 @@ class HanabiGameEngine:
             for player_id in range(self.player_count):
                 self._draw_card_to_player(player_id)
 
-    def step(self, action: Action) -> EngineStepResult:
+    def step(self, action: ActionLike) -> EngineStepResult:
         """
         Apply one legal action for the current player.
         """
         if self.is_terminal():
             raise RuntimeError("Cannot call step() on a terminal game.")
 
+        decision = normalize_agent_decision(action)
+        action = decision.action
+
         legal_actions = self.get_legal_actions(self.current_player)
         if action not in legal_actions:
             raise ValueError(
                 f"Illegal action for player {self.current_player}: {action!s}."
             )
+        self._validate_hint_presentation(action, decision.hint_presentation)
 
         acting_player = self.current_player
         removed_card: Card | None = None
         revealed_indices: tuple[int, ...] = ()
+        revealed_groups: tuple[tuple[int, ...], ...] = ()
+        fireworks_before = dict(self.fireworks)
         play_succeeded: bool | None = None
         drew_replacement = False
 
@@ -145,9 +160,17 @@ class HanabiGameEngine:
                 acting_player, action
             )
         elif isinstance(action, HintColorAction):
-            revealed_indices = self._handle_hint_color_action(acting_player, action)
+            revealed_indices, revealed_groups = self._handle_hint_color_action(
+                acting_player,
+                action,
+                decision.hint_presentation,
+            )
         elif isinstance(action, HintRankAction):
-            revealed_indices = self._handle_hint_rank_action(acting_player, action)
+            revealed_indices, revealed_groups = self._handle_hint_rank_action(
+                acting_player,
+                action,
+                decision.hint_presentation,
+            )
         else:
             raise TypeError(f"Unsupported action type: {type(action)!r}.")
 
@@ -156,6 +179,8 @@ class HanabiGameEngine:
             action=action,
             removed_card=removed_card,
             revealed_indices=revealed_indices,
+            revealed_groups=revealed_groups,
+            fireworks_before=fireworks_before if is_hint_action(action) else None,
             play_succeeded=play_succeeded,
             drew_replacement=drew_replacement,
         )
@@ -173,6 +198,8 @@ class HanabiGameEngine:
             action=action,
             removed_card=removed_card,
             revealed_indices=revealed_indices,
+            revealed_groups=revealed_groups,
+            fireworks_before=fireworks_before if is_hint_action(action) else None,
             play_succeeded=play_succeeded,
             drew_replacement=drew_replacement,
             score=self.get_score(),
@@ -236,6 +263,18 @@ class HanabiGameEngine:
             hint_tokens=self.hint_tokens,
             strike_tokens=self.strike_tokens,
             deck_size=len(self.deck),
+            public_history=tuple(
+                PublicTurnRecord(
+                    player_id=record.player_id,
+                    action=record.action,
+                    revealed_indices=record.revealed_indices,
+                    revealed_groups=record.revealed_groups,
+                    fireworks_before=dict(record.fireworks_before)
+                    if record.fireworks_before is not None
+                    else None,
+                )
+                for record in self.history
+            ),
             legal_actions=legal_actions,
         )
 
@@ -287,34 +326,78 @@ class HanabiGameEngine:
         return card, drew_replacement
 
     def _handle_hint_color_action(
-        self, player_id: int, action: HintColorAction
-    ) -> tuple[int, ...]:
+        self,
+        player_id: int,
+        action: HintColorAction,
+        hint_presentation: HintPresentation | None,
+    ) -> tuple[tuple[int, ...], tuple[tuple[int, ...], ...]]:
         self._spend_hint_token()
         target_hand = self.hands[action.target_player]
-        revealed_indices = tuple(
-            index for index, card in enumerate(target_hand) if card.color == action.color
+        revealed_indices, revealed_groups = self._resolve_revealed_indices(
+            tuple(
+                index for index, card in enumerate(target_hand) if card.color == action.color
+            ),
+            hint_presentation,
         )
         self.knowledge_by_player[action.target_player] = apply_color_hint_to_knowledge(
             self.knowledge_by_player[action.target_player],
             target_hand,
             action.color,
         )
-        return revealed_indices
+        return revealed_indices, revealed_groups
 
     def _handle_hint_rank_action(
-        self, player_id: int, action: HintRankAction
-    ) -> tuple[int, ...]:
+        self,
+        player_id: int,
+        action: HintRankAction,
+        hint_presentation: HintPresentation | None,
+    ) -> tuple[tuple[int, ...], tuple[tuple[int, ...], ...]]:
         self._spend_hint_token()
         target_hand = self.hands[action.target_player]
-        revealed_indices = tuple(
-            index for index, card in enumerate(target_hand) if card.rank == action.rank
+        revealed_indices, revealed_groups = self._resolve_revealed_indices(
+            tuple(
+                index for index, card in enumerate(target_hand) if card.rank == action.rank
+            ),
+            hint_presentation,
         )
         self.knowledge_by_player[action.target_player] = apply_rank_hint_to_knowledge(
             self.knowledge_by_player[action.target_player],
             target_hand,
             action.rank,
         )
-        return revealed_indices
+        return revealed_indices, revealed_groups
+
+    def _validate_hint_presentation(
+        self,
+        action: Action,
+        hint_presentation: HintPresentation | None,
+    ) -> None:
+        if hint_presentation is None:
+            return
+        if not is_hint_action(action):
+            raise ValueError(
+                "hint_presentation can only be provided for hint actions."
+            )
+
+    def _resolve_revealed_indices(
+        self,
+        default_indices: tuple[int, ...],
+        hint_presentation: HintPresentation | None,
+    ) -> tuple[tuple[int, ...], tuple[tuple[int, ...], ...]]:
+        if hint_presentation is None:
+            return default_indices, (default_indices,) if default_indices else ()
+
+        custom_indices = hint_presentation.revealed_indices
+        custom_groups = hint_presentation.revealed_groups
+        if custom_indices is None:
+            raise ValueError("hint_presentation must resolve to revealed_indices.")
+        if tuple(sorted(custom_indices)) != tuple(sorted(default_indices)):
+            raise ValueError(
+                "hint_presentation.revealed_indices must match the cards revealed by the hint."
+            )
+        if custom_groups is None:
+            custom_groups = (custom_indices,) if custom_indices else ()
+        return custom_indices, custom_groups
 
     def _spend_hint_token(self) -> None:
         if not can_give_hint(self.hint_tokens):

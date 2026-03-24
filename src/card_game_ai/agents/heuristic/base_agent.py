@@ -4,6 +4,7 @@ from collections import Counter
 
 from card_game_ai.game.actions import (
     Action,
+    AgentDecision,
     DiscardAction,
     HintColorAction,
     HintRankAction,
@@ -18,35 +19,25 @@ from card_game_ai.game.observation import (
 from card_game_ai.game.rules import is_card_already_played, is_card_playable
 
 
-class HeuristicAgent:
+class BaseHeuristicAgent:
     """
-    Conservative rule-based Hanabi baseline using only partial observations.
+    Shared rule-based Hanabi heuristic logic using only partial observations.
 
-    Policy summary:
-    - Play an own-hand card only when current knowledge guarantees it is playable.
-    - Otherwise, choose the most useful legal hint for a teammate.
-    - Otherwise, prefer the safest discard candidate.
-    - Avoid blind plays whenever a discard is legal.
-    - If forced to play, choose the own-hand card with the highest inferred
-      probability of being playable.
-
-    Public-information inference:
-    - Own-hand knowledge from received hints
-    - Visible teammate hands
-    - Current fireworks state
-    - Discard pile
-
-    The agent never accesses hidden information from its own hand directly.
+    Subclasses can customize how they interpret public hint history or how they
+    present hints to teammates, while reusing the same local play, hint, and
+    discard policy.
     """
 
-    def act(self, observation: PlayerObservation) -> Action:
+    def act(self, observation: PlayerObservation) -> Action | AgentDecision:
         """
         Choose an action using a small ordered set of Hanabi heuristics.
         """
         if not observation.legal_actions:
             raise ValueError(
-                "HeuristicAgent received an observation with no legal actions."
+                f"{self.__class__.__name__} received an observation with no legal actions."
             )
+
+        observation = self._apply_private_conventions(observation)
 
         guaranteed_play = self._choose_definitely_playable_action(observation)
         if guaranteed_play is not None:
@@ -54,7 +45,7 @@ class HeuristicAgent:
 
         helpful_hint = self._choose_hint_for_other_players(observation)
         if helpful_hint is not None:
-            return helpful_hint
+            return self._attach_hint_presentation(helpful_hint, observation)
 
         discard_action = self._choose_discard_action(observation)
         if discard_action is not None:
@@ -65,6 +56,18 @@ class HeuristicAgent:
             return fallback_play
 
         return observation.legal_actions[0]
+
+    def _apply_private_conventions(
+        self, observation: PlayerObservation
+    ) -> PlayerObservation:
+        return observation
+
+    def _attach_hint_presentation(
+        self,
+        action: HintColorAction | HintRankAction,
+        observation: PlayerObservation,
+    ) -> HintColorAction | HintRankAction | AgentDecision:
+        return action
 
     def _choose_definitely_playable_action(
         self, observation: PlayerObservation

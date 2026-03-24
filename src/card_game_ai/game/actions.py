@@ -69,7 +69,49 @@ class HintRankAction:
         return f"HintRank(target_player={self.target_player}, rank={int(self.rank)})"
 
 
+@dataclass(frozen=True, slots=True)
+class HintPresentation:
+    revealed_indices: tuple[int, ...] | None = None
+    revealed_groups: tuple[tuple[int, ...], ...] | None = None
+
+    def __post_init__(self) -> None:
+        if self.revealed_indices is None and self.revealed_groups is None:
+            raise ValueError(
+                "HintPresentation requires revealed_indices, revealed_groups, or both."
+            )
+
+        flattened_groups = (
+            tuple(index for group in self.revealed_groups for index in group)
+            if self.revealed_groups is not None
+            else None
+        )
+
+        if self.revealed_indices is None and flattened_groups is not None:
+            object.__setattr__(self, "revealed_indices", flattened_groups)
+        elif (
+            self.revealed_indices is not None
+            and flattened_groups is not None
+            and self.revealed_indices != flattened_groups
+        ):
+            raise ValueError(
+                "HintPresentation.revealed_indices must match the flattened revealed_groups."
+            )
+
+
+@dataclass(frozen=True, slots=True)
+class AgentDecision:
+    action: Action
+    hint_presentation: HintPresentation | None = None
+
+
 Action: TypeAlias = PlayAction | DiscardAction | HintColorAction | HintRankAction
+ActionLike: TypeAlias = Action | AgentDecision
+
+
+def normalize_agent_decision(action_like: ActionLike) -> AgentDecision:
+    if isinstance(action_like, AgentDecision):
+        return action_like
+    return AgentDecision(action=action_like)
 
 
 def is_hint_action(action: Action) -> bool:

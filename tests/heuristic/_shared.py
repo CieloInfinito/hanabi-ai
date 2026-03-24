@@ -1,15 +1,25 @@
 from __future__ import annotations
 
-import unittest
+from abc import ABC, abstractmethod
 
-import _path_setup
-from card_game_ai.agents.heuristic_agent import HeuristicAgent
-from card_game_ai.game.actions import DiscardAction, HintColorAction, HintRankAction, PlayAction
+from card_game_ai.game.actions import (
+    DiscardAction,
+    HintColorAction,
+    HintRankAction,
+    PlayAction,
+    normalize_agent_decision,
+)
 from card_game_ai.game.cards import Card, Color, Rank
 from card_game_ai.game.engine import HanabiGameEngine
 
 
-class HeuristicAgentTests(unittest.TestCase):
+    # Shared heuristic tests verify the baseline decision logic that every
+    # heuristic agent in this family should satisfy.
+class SharedHeuristicAgentTests(ABC):
+    @abstractmethod
+    def make_agent(self):
+        raise NotImplementedError
+
     def test_heuristic_agent_plays_definitely_playable_card(self) -> None:
         # Verifies that the agent plays one of its own cards when partial
         # knowledge guarantees that the card is currently playable.
@@ -22,9 +32,9 @@ class HeuristicAgentTests(unittest.TestCase):
             hinted_rank=Rank.TWO,
         )
         observation = engine.get_observation(0)
-        agent = HeuristicAgent()
+        agent = self.make_agent()
 
-        action = agent.act(observation)
+        action = normalize_agent_decision(agent.act(observation)).action
 
         self.assertEqual(action, PlayAction(card_index=0))
 
@@ -40,9 +50,9 @@ class HeuristicAgentTests(unittest.TestCase):
             Card(Color.WHITE, Rank.FIVE),
         ]
         observation = engine.get_observation(0)
-        agent = HeuristicAgent()
+        agent = self.make_agent()
 
-        action = agent.act(observation)
+        action = normalize_agent_decision(agent.act(observation)).action
 
         self.assertEqual(action, HintColorAction(target_player=1, color=Color.BLUE))
 
@@ -58,9 +68,9 @@ class HeuristicAgentTests(unittest.TestCase):
             Card(Color.WHITE, Rank.FIVE),
         ]
         observation = engine.get_observation(0)
-        agent = HeuristicAgent()
+        agent = self.make_agent()
 
-        action = agent.act(observation)
+        action = normalize_agent_decision(agent.act(observation)).action
 
         self.assertEqual(action, HintRankAction(target_player=1, rank=Rank.ONE))
 
@@ -77,9 +87,9 @@ class HeuristicAgentTests(unittest.TestCase):
             hinted_rank=Rank.ONE,
         )
         observation = engine.get_observation(0)
-        agent = HeuristicAgent()
+        agent = self.make_agent()
 
-        action = agent.act(observation)
+        action = normalize_agent_decision(agent.act(observation)).action
 
         self.assertEqual(action, DiscardAction(card_index=0))
 
@@ -100,9 +110,9 @@ class HeuristicAgentTests(unittest.TestCase):
             hinted_rank=Rank.ONE,
         )
         observation = engine.get_observation(0)
-        agent = HeuristicAgent()
+        agent = self.make_agent()
 
-        action = agent.act(observation)
+        action = normalize_agent_decision(agent.act(observation)).action
 
         self.assertEqual(action, PlayAction(card_index=0))
 
@@ -125,9 +135,9 @@ class HeuristicAgentTests(unittest.TestCase):
             hinted_rank=Rank.ONE,
         )
         observation = engine.get_observation(0)
-        agent = HeuristicAgent()
+        agent = self.make_agent()
 
-        action = agent.act(observation)
+        action = normalize_agent_decision(agent.act(observation)).action
 
         self.assertEqual(action, DiscardAction(card_index=0))
 
@@ -137,9 +147,9 @@ class HeuristicAgentTests(unittest.TestCase):
         engine = HanabiGameEngine(player_count=2, seed=36)
         engine.hint_tokens = 0
         observation = engine.get_observation(0)
-        agent = HeuristicAgent()
+        agent = self.make_agent()
 
-        action = agent.act(observation)
+        action = normalize_agent_decision(agent.act(observation)).action
 
         self.assertIsInstance(action, DiscardAction)
 
@@ -164,9 +174,9 @@ class HeuristicAgentTests(unittest.TestCase):
             hinted_rank=Rank.FIVE,
         )
         observation = engine.get_observation(0)
-        agent = HeuristicAgent()
+        agent = self.make_agent()
 
-        action = agent.act(observation)
+        action = normalize_agent_decision(agent.act(observation)).action
 
         self.assertEqual(action, DiscardAction(card_index=0))
 
@@ -189,9 +199,9 @@ class HeuristicAgentTests(unittest.TestCase):
             hinted_rank=Rank.ONE,
         )
         observation = engine.get_observation(0)
-        agent = HeuristicAgent()
+        agent = self.make_agent()
 
-        action = agent.act(observation)
+        action = normalize_agent_decision(agent.act(observation)).action
 
         self.assertEqual(action, DiscardAction(card_index=1))
 
@@ -200,12 +210,8 @@ class HeuristicAgentTests(unittest.TestCase):
         # must belong to the legal action set in the observation.
         engine = HanabiGameEngine(player_count=2, seed=33)
         observation = engine.get_observation(0)
-        agent = HeuristicAgent()
+        agent = self.make_agent()
 
-        action = agent.act(observation)
+        decision = normalize_agent_decision(agent.act(observation))
 
-        self.assertIn(action, observation.legal_actions)
-
-
-if __name__ == "__main__":
-    unittest.main()
+        self.assertIn(decision.action, observation.legal_actions)

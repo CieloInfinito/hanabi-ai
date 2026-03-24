@@ -3,7 +3,13 @@ from __future__ import annotations
 import unittest
 
 import _path_setup
-from card_game_ai.game.actions import DiscardAction, HintColorAction, PlayAction
+from card_game_ai.game.actions import (
+    AgentDecision,
+    DiscardAction,
+    HintColorAction,
+    HintPresentation,
+    PlayAction,
+)
 from card_game_ai.game.cards import Card, Color, MAX_HINT_TOKENS, Rank
 from card_game_ai.game.engine import HanabiGameEngine
 from card_game_ai.game.observation import get_definitely_playable_card_indices
@@ -125,6 +131,59 @@ class HanabiGameEngineTests(unittest.TestCase):
 
         self.assertEqual(definitely_playable, (0,))
 
+    def test_observation_exposes_public_hint_history(self) -> None:
+        # Verifies that observations include public turn history so agents can
+        # interpret hint conventions privately without changing engine rules.
+        engine = HanabiGameEngine(player_count=2, seed=16)
+
+        engine.step(HintColorAction(target_player=1, color=engine.hands[1][0].color))
+        observation = engine.get_observation(1)
+
+        self.assertEqual(len(observation.public_history), 1)
+        self.assertEqual(observation.public_history[0].player_id, 0)
+        self.assertIsInstance(observation.public_history[0].action, HintColorAction)
+        self.assertTrue(observation.public_history[0].revealed_indices)
+
+    def test_hint_action_accepts_custom_presentation_order(self) -> None:
+        # Verifies that the engine accepts a custom reveal ordering for hints
+        # as long as it references exactly the cards affected by the hint.
+        engine = HanabiGameEngine(player_count=2, seed=17)
+        engine.hands[1] = [
+            Card(Color.YELLOW, Rank.ONE),
+            Card(Color.BLUE, Rank.THREE),
+            Card(Color.YELLOW, Rank.TWO),
+            Card(Color.YELLOW, Rank.FOUR),
+            Card(Color.WHITE, Rank.FIVE),
+        ]
+
+        result = engine.step(
+            AgentDecision(
+                action=HintColorAction(target_player=1, color=Color.YELLOW),
+                hint_presentation=HintPresentation(revealed_indices=(3, 0, 2)),
+            )
+        )
+
+        self.assertEqual(result.revealed_indices, (3, 0, 2))
+        self.assertEqual(engine.history[-1].revealed_indices, (3, 0, 2))
+
+    def test_hint_action_rejects_invalid_custom_presentation(self) -> None:
+        # Verifies that custom hint presentations are validated by the engine.
+        engine = HanabiGameEngine(player_count=2, seed=18)
+        engine.hands[1] = [
+            Card(Color.YELLOW, Rank.ONE),
+            Card(Color.BLUE, Rank.THREE),
+            Card(Color.YELLOW, Rank.TWO),
+            Card(Color.YELLOW, Rank.FOUR),
+            Card(Color.WHITE, Rank.FIVE),
+        ]
+
+        with self.assertRaises(ValueError):
+            engine.step(
+                AgentDecision(
+                    action=HintColorAction(target_player=1, color=Color.YELLOW),
+                    hint_presentation=HintPresentation(revealed_indices=(0, 1, 2)),
+                )
+            )
 
 if __name__ == "__main__":
     unittest.main()

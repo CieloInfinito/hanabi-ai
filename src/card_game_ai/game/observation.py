@@ -22,6 +22,15 @@ class ObservedHand:
 
 
 @dataclass(frozen=True, slots=True)
+class PublicTurnRecord:
+    player_id: int
+    action: Action
+    revealed_indices: tuple[int, ...] = ()
+    revealed_groups: tuple[tuple[int, ...], ...] = ()
+    fireworks_before: dict[Color, int] | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class PlayerObservation:
     observing_player: int
     current_player: int
@@ -32,6 +41,7 @@ class PlayerObservation:
     hint_tokens: int
     strike_tokens: int
     deck_size: int
+    public_history: tuple[PublicTurnRecord, ...]
     legal_actions: tuple[Action, ...]
 
 
@@ -144,6 +154,7 @@ def build_player_observation(
     hint_tokens: int,
     strike_tokens: int,
     deck_size: int,
+    public_history: tuple[PublicTurnRecord, ...],
     legal_actions: list[Action],
 ) -> PlayerObservation:
     """
@@ -165,6 +176,7 @@ def build_player_observation(
         hint_tokens=hint_tokens,
         strike_tokens=strike_tokens,
         deck_size=deck_size,
+        public_history=public_history,
         legal_actions=tuple(legal_actions),
     )
 
