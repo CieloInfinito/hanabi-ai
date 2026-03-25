@@ -17,10 +17,12 @@ invalid.
 ```text
 src/hanabi_ai/
 |- agents/
+|  |- beliefs.py
 |  |- heuristic/
 |  |  |- base.py
 |  |  |- basic.py
-|  |  `- convention.py
+|  |  |- convention.py
+|  |  `- tempo.py
 |  `- random.py
 |- game/
 |  |- actions.py
@@ -116,6 +118,27 @@ features from visible hands, discards, and fireworks.
 The current heuristic layer builds on top of these features to estimate card
 distributions, discard risk, and whether a hint would likely create an
 immediately safe follow-up action for the receiving player.
+
+### `agents/beliefs.py`
+
+Builds derived belief views on top of a single `PlayerObservation`.
+
+This layer is intentionally separate from both the engine and the raw
+observation model:
+
+- `PlayerObservation` contains visible facts
+- `PublicBeliefState` contains reusable public inference
+- Heuristic agents consume both to choose actions
+
+The current `PublicBeliefState` centralizes:
+
+- reconstructed public knowledge of each player's own hand
+- remaining public copy counts
+- weighted hidden-card distributions
+- public hint updates used for hint scoring
+
+This keeps inference reusable across one turn without turning the game engine
+into a belief tracker.
 
 ### `game/engine.py`
 

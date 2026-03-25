@@ -4,6 +4,7 @@ import argparse
 
 from hanabi_ai.agents.heuristic.basic import BasicHeuristicAgent
 from hanabi_ai.agents.heuristic.convention import ConventionHeuristicAgent
+from hanabi_ai.agents.heuristic.tempo import TempoHeuristicAgent
 from hanabi_ai.agents.random import RandomAgent
 from hanabi_ai.training.self_play import SelfPlayEvaluation, evaluate_self_play
 
@@ -59,6 +60,12 @@ def main() -> None:
         game_count=args.games,
         seed_base=args.seed_base,
     )
+    tempo_evaluation = evaluate_self_play(
+        lambda player_id, game_index: TempoHeuristicAgent(),
+        player_count=args.players,
+        game_count=args.games,
+        seed_base=args.seed_base,
+    )
     random_evaluation = evaluate_self_play(
         lambda player_id, game_index: RandomAgent(
             seed=args.agent_seed_base + (game_index * args.players) + player_id
@@ -71,6 +78,8 @@ def main() -> None:
     print(_format_evaluation("BasicHeuristicAgent", basic_evaluation))
     print()
     print(_format_evaluation("ConventionHeuristicAgent", convention_evaluation))
+    print()
+    print(_format_evaluation("TempoHeuristicAgent", tempo_evaluation))
     print()
     print(_format_evaluation("RandomAgent", random_evaluation))
     print()
@@ -88,6 +97,14 @@ def main() -> None:
         _format_comparison(
             "Convention vs Basic",
             convention_evaluation,
+            basic_evaluation,
+        )
+    )
+    print()
+    print(
+        _format_comparison(
+            "Tempo vs Basic",
+            tempo_evaluation,
             basic_evaluation,
         )
     )

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from collections import Counter
-
+from hanabi_ai.agents.beliefs import PublicBeliefState
 from hanabi_ai.game.actions import (
     Action,
     AgentDecision,
@@ -16,12 +15,6 @@ from hanabi_ai.game.observation import (
     ObservedHand,
     PlayerObservation,
     PublicTurnRecord,
-    apply_color_hint_to_public_knowledge,
-    apply_rank_hint_to_public_knowledge,
-    build_visible_card_counts,
-    estimate_card_distribution,
-    get_definitely_playable_card_indices,
-    reconstruct_public_hand_knowledge,
 )
 from hanabi_ai.game.rules import is_card_already_played, is_card_playable
 
@@ -45,6 +38,7 @@ class BaseHeuristicAgent:
             )
 
         observation = self._apply_private_conventions(observation)
+        self._cache_belief_state(observation)
 
         guaranteed_play = self._choose_definitely_playable_action(observation)
         if guaranteed_play is not None:
@@ -100,6 +94,19 @@ class BaseHeuristicAgent:
         observation: PlayerObservation,
     ) -> HintColorAction | HintRankAction | AgentDecision:
         return action
+
+    def _cache_belief_state(self, observation: PlayerObservation) -> PublicBeliefState:
+        belief_state = PublicBeliefState.from_observation(observation)
+        self._cached_belief_observation = observation
+        self._cached_belief_state = belief_state
+        return belief_state
+
+    def _belief_state(self, observation: PlayerObservation) -> PublicBeliefState:
+        cached_observation = getattr(self, "_cached_belief_observation", None)
+        cached_belief_state = getattr(self, "_cached_belief_state", None)
+        if cached_observation is observation and cached_belief_state is not None:
+            return cached_belief_state
+        return self._cache_belief_state(observation)
 
     def _choose_definitely_playable_action(
         self, observation: PlayerObservation
@@ -389,52 +396,18 @@ class BaseHeuristicAgent:
         observation: PlayerObservation,
         hint_action: HintColorAction | HintRankAction,
     ) -> int:
-        hand_knowledge = list(
-            reconstruct_public_hand_knowledge(observation, observed_hand.player_id)
-        )
+        belief_state = self._belief_state(observation)
+        before_knowledge = belief_state.knowledge_for_player(observed_hand.player_id)
         definitely_playable_before = set(
-            get_definitely_playable_card_indices(
-                tuple(hand_knowledge),
-                observation.fireworks,
-            )
+            belief_state.guaranteed_play_indices_for_knowledge(before_knowledge)
         )
-
-        if isinstance(hint_action, HintColorAction):
-            updated_knowledge = apply_color_hint_to_public_knowledge(
-                hand_knowledge,
-                tuple(
-                    index
-                    for index, card in enumerate(cards)
-                    if card.color == hint_action.color
-                ),
-                hint_action.color,
-            )
-            revealed_indices = tuple(
-                index
-                for index, card in enumerate(cards)
-                if card.color == hint_action.color
-            )
-        else:
-            updated_knowledge = apply_rank_hint_to_public_knowledge(
-                hand_knowledge,
-                tuple(
-                    index
-                    for index, card in enumerate(cards)
-                    if card.rank == hint_action.rank
-                ),
-                hint_action.rank,
-            )
-            revealed_indices = tuple(
-                index
-                for index, card in enumerate(cards)
-                if card.rank == hint_action.rank
-            )
-
+        updated_knowledge, revealed_indices = belief_state.updated_public_knowledge_after_hint(
+            observed_hand.player_id,
+            cards,
+            hint_action,
+        )
         definitely_playable = set(
-            get_definitely_playable_card_indices(
-                tuple(updated_knowledge),
-                observation.fireworks,
-            )
+            belief_state.guaranteed_play_indices_for_knowledge(updated_knowledge)
         )
         return sum(
             index in definitely_playable and index not in definitely_playable_before
@@ -448,32 +421,13 @@ class BaseHeuristicAgent:
         observation: PlayerObservation,
         hint_action: HintColorAction | HintRankAction,
     ) -> int:
-        before_knowledge = list(
-            reconstruct_public_hand_knowledge(observation, observed_hand.player_id)
+        belief_state = self._belief_state(observation)
+        before_knowledge = belief_state.knowledge_for_player(observed_hand.player_id)
+        after_knowledge, _ = belief_state.updated_public_knowledge_after_hint(
+            observed_hand.player_id,
+            cards,
+            hint_action,
         )
-
-        if isinstance(hint_action, HintColorAction):
-            revealed_indices = tuple(
-                index
-                for index, card in enumerate(cards)
-                if card.color == hint_action.color
-            )
-            after_knowledge = apply_color_hint_to_public_knowledge(
-                before_knowledge,
-                revealed_indices,
-                hint_action.color,
-            )
-        else:
-            revealed_indices = tuple(
-                index
-                for index, card in enumerate(cards)
-                if card.rank == hint_action.rank
-            )
-            after_knowledge = apply_rank_hint_to_public_knowledge(
-                before_knowledge,
-                revealed_indices,
-                hint_action.rank,
-            )
 
         gain = 0
         for index, card in enumerate(cards):
@@ -498,7 +452,8 @@ class BaseHeuristicAgent:
     def _score_discard_knowledge(
         self, knowledge: CardKnowledge, observation: PlayerObservation
     ) -> tuple[int, int, float, float, float, float, int, int]:
-        card_distribution = estimate_card_distribution(knowledge, observation)
+        belief_state = self._belief_state(observation)
+        card_distribution = belief_state.distribution_for_knowledge(knowledge)
         possible_cards = (
             tuple(card for card, _ in card_distribution)
             if card_distribution
@@ -541,7 +496,8 @@ class BaseHeuristicAgent:
     def _playable_probability(
         self, knowledge: CardKnowledge, observation: PlayerObservation
     ) -> float:
-        card_distribution = estimate_card_distribution(knowledge, observation)
+        belief_state = self._belief_state(observation)
+        card_distribution = belief_state.distribution_for_knowledge(knowledge)
         if not card_distribution:
             return 0.0
 
@@ -558,7 +514,8 @@ class BaseHeuristicAgent:
         *,
         index: int,
     ) -> tuple[float, float, float, int]:
-        card_distribution = estimate_card_distribution(knowledge, observation)
+        belief_state = self._belief_state(observation)
+        card_distribution = belief_state.distribution_for_knowledge(knowledge)
         if not card_distribution:
             return (0.0, 0.0, 0.0, -index)
 
@@ -586,7 +543,8 @@ class BaseHeuristicAgent:
     def _dead_probability(
         self, knowledge: CardKnowledge, observation: PlayerObservation
     ) -> float:
-        card_distribution = estimate_card_distribution(knowledge, observation)
+        belief_state = self._belief_state(observation)
+        card_distribution = belief_state.distribution_for_knowledge(knowledge)
         if not card_distribution:
             return 0.0
 
@@ -599,7 +557,8 @@ class BaseHeuristicAgent:
     def _already_played_probability(
         self, knowledge: CardKnowledge, observation: PlayerObservation
     ) -> float:
-        card_distribution = estimate_card_distribution(knowledge, observation)
+        belief_state = self._belief_state(observation)
+        card_distribution = belief_state.distribution_for_knowledge(knowledge)
         if not card_distribution:
             return 0.0
 
@@ -612,7 +571,8 @@ class BaseHeuristicAgent:
     def _critical_probability(
         self, knowledge: CardKnowledge, observation: PlayerObservation
     ) -> float:
-        card_distribution = estimate_card_distribution(knowledge, observation)
+        belief_state = self._belief_state(observation)
+        card_distribution = belief_state.distribution_for_knowledge(knowledge)
         if not card_distribution:
             return 0.0
 
@@ -625,13 +585,9 @@ class BaseHeuristicAgent:
     def _expected_discard_risk(
         self, knowledge: CardKnowledge, observation: PlayerObservation
     ) -> float:
-        card_distribution = estimate_card_distribution(knowledge, observation)
-        if not card_distribution:
-            return 0.0
-
-        return sum(
-            probability * self._discard_risk_for_card(card, observation)
-            for card, probability in card_distribution
+        return self._belief_state(observation).expected_value_for_knowledge(
+            knowledge,
+            lambda card: self._discard_risk_for_card(card, observation),
         )
 
     def _possible_cards(self, knowledge: CardKnowledge) -> tuple[Card, ...]:
@@ -644,10 +600,7 @@ class BaseHeuristicAgent:
     def _possible_cards_for_knowledge(
         self, knowledge: CardKnowledge, observation: PlayerObservation
     ) -> tuple[Card, ...]:
-        card_distribution = estimate_card_distribution(knowledge, observation)
-        if card_distribution:
-            return tuple(card for card, _ in card_distribution)
-        return self._possible_cards(knowledge)
+        return self._belief_state(observation).possible_cards_for_knowledge(knowledge)
 
     def _risky_play_probability_threshold(
         self, observation: PlayerObservation
@@ -662,8 +615,7 @@ class BaseHeuristicAgent:
         if self._card_is_dead(card, observation):
             return False
 
-        visible_count = self._visible_card_counts(observation)[(card.color, card.rank)]
-        remaining_copies = CARD_COUNTS_BY_RANK[card.rank] - visible_count
+        remaining_copies = self._belief_state(observation).remaining_card_counts[card]
         return remaining_copies <= 1
 
     def _discard_risk_for_card(
@@ -680,7 +632,8 @@ class BaseHeuristicAgent:
     def _expected_play_failure_cost(
         self, knowledge: CardKnowledge, observation: PlayerObservation
     ) -> float:
-        card_distribution = estimate_card_distribution(knowledge, observation)
+        belief_state = self._belief_state(observation)
+        card_distribution = belief_state.distribution_for_knowledge(knowledge)
         if not card_distribution:
             return 0.0
 
@@ -711,11 +664,3 @@ class BaseHeuristicAgent:
             for discarded_card in observation.discard_pile
             if discarded_card.color == color and discarded_card.rank == rank
         )
-
-    def _visible_card_counts(
-        self, observation: PlayerObservation
-    ) -> Counter[tuple[object, Rank]]:
-        counts: Counter[tuple[object, Rank]] = Counter()
-        for card, count in build_visible_card_counts(observation).items():
-            counts[(card.color, card.rank)] = count
-        return counts

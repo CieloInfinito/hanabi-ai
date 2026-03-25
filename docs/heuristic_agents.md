@@ -7,8 +7,17 @@ The project currently includes three baseline agents:
 - `RandomAgent`
 - `BasicHeuristicAgent`
 - `ConventionHeuristicAgent`
+- `TempoHeuristicAgent`
 
 The heuristic agents use only partial observations and public information.
+
+The shared heuristic stack now sits on top of `PublicBeliefState`, which means
+the decision policy does not recompute every public inference from scratch in
+multiple places. Instead:
+
+- `PlayerObservation` supplies visible game facts
+- `PublicBeliefState` derives reusable public hand knowledge and card beliefs
+- heuristic agents focus on prioritizing actions
 
 ## `RandomAgent`
 
@@ -78,6 +87,24 @@ Aside from those extra conventions, the convention heuristic inherits the
 same remaining-copy weighting, critical-card protection, and risk-aware
 discard logic from the shared heuristic base, along with the same
 actionability-first hint scoring and bounded probabilistic self-play policy.
+
+## `TempoHeuristicAgent`
+
+Defined in `src/hanabi_ai/agents/heuristic/tempo.py`.
+
+This experimental variant keeps the same public-inference stack as the basic
+heuristic, but changes one policy choice: when hint economy is low, it becomes
+less willing to spend the team's last hint token on a hint that does not create
+an immediate actionable play.
+
+In practice this means:
+
+- if a hint creates a guaranteed safe play, tempo still spends the hint
+- if hint tokens are low and the best hint is mostly informational, tempo
+  prefers recovering the economy with a discard when legal
+
+This makes it a good comparison point when testing whether a stronger
+short-horizon tempo policy beats a more information-friendly baseline.
 
 ## Visualization Support
 
