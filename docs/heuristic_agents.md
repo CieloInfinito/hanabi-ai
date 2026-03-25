@@ -19,6 +19,14 @@ multiple places. Instead:
 - `PublicBeliefState` derives reusable public hand knowledge and card beliefs
 - heuristic agents focus on prioritizing actions
 
+Internally, the heuristic implementation is now split so that:
+
+- `base.py` owns the top-level action policy
+- `_mixins.py` owns shared belief and scoring internals
+- `_scoring.py` defines common score aliases and utility helpers
+- `_convention_mixin.py` isolates the private convention logic used only by
+  `ConventionHeuristicAgent`
+
 ## `RandomAgent`
 
 Defined in `src/hanabi_ai/agents/random.py`.

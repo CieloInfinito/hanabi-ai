@@ -19,6 +19,9 @@ src/hanabi_ai/
 |- agents/
 |  |- beliefs.py
 |  |- heuristic/
+|  |  |- _convention_mixin.py
+|  |  |- _mixins.py
+|  |  |- _scoring.py
 |  |  |- base.py
 |  |  |- basic.py
 |  |  |- convention.py
@@ -139,6 +142,19 @@ The current `PublicBeliefState` centralizes:
 
 This keeps inference reusable across one turn without turning the game engine
 into a belief tracker.
+
+### `agents/heuristic/`
+
+The heuristic stack is now split by responsibility:
+
+- `base.py` keeps the high-level action-selection order
+- `_mixins.py` holds shared belief caching and scoring machinery
+- `_scoring.py` defines scoring aliases and small helper utilities
+- `_convention_mixin.py` contains the private convention logic used by the
+  convention-aware agent
+
+This keeps the public agent classes small while leaving the shared internals
+reusable and testable.
 
 ### `game/engine.py`
 
