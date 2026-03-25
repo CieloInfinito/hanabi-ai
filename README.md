@@ -51,13 +51,13 @@ Run the 2-player basic heuristic demo:
 hanabi-demo-basic
 ```
 
-Run the 2-player conservative heuristic demo:
+Run the 2-player convention heuristic demo:
 
 ```powershell
-hanabi-demo-conservative
+hanabi-demo-convention
 ```
 
-Run a batched comparison between the basic heuristic, the conservative
+Run a batched comparison between the basic heuristic, the convention
 heuristic, and the random baseline:
 
 ```powershell
@@ -68,7 +68,7 @@ Equivalent module form:
 
 ```powershell
 python -m hanabi_ai.tools.demo_basic_trace
-python -m hanabi_ai.tools.demo_conservative_trace --game-seed 7
+python -m hanabi_ai.tools.demo_convention_trace --game-seed 7
 python -m hanabi_ai.tools.evaluate_agents --players 2 --games 200
 ```
 

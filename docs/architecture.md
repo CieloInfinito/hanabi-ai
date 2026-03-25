@@ -20,7 +20,7 @@ src/hanabi_ai/
 |  |- heuristic/
 |  |  |- base.py
 |  |  |- basic.py
-|  |  `- conservative.py
+|  |  `- convention.py
 |  `- random.py
 |- game/
 |  |- actions.py
@@ -30,7 +30,7 @@ src/hanabi_ai/
 |  `- rules.py
 |- tools/
 |  |- demo_basic_trace.py
-|  |- demo_conservative_trace.py
+|  |- demo_convention_trace.py
 |  `- evaluate_agents.py
 |- training/
 |  `- self_play.py

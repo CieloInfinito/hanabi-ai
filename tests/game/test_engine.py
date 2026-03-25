@@ -11,7 +11,10 @@ from hanabi_ai.game.actions import (
 )
 from hanabi_ai.game.cards import Card, Color, MAX_HINT_TOKENS, Rank
 from hanabi_ai.game.engine import HanabiGameEngine
-from hanabi_ai.game.observation import get_definitely_playable_card_indices
+from hanabi_ai.game.observation import (
+    get_definitely_playable_card_indices,
+    reconstruct_public_hand_knowledge,
+)
 
 
 class HanabiGameEngineTests(unittest.TestCase):
@@ -142,6 +145,45 @@ class HanabiGameEngineTests(unittest.TestCase):
         self.assertEqual(observation.public_history[0].player_id, 0)
         self.assertIsInstance(observation.public_history[0].action, HintColorAction)
         self.assertTrue(observation.public_history[0].revealed_indices)
+
+    def test_public_history_exposes_replacement_draws_for_hand_tracking(self) -> None:
+        # Verifies that public history includes whether a replacement was drawn
+        # so agents can reconstruct public hand knowledge over time.
+        engine = HanabiGameEngine(player_count=2, seed=19)
+        engine.hands[0][0] = Card(Color.RED, Rank.ONE)
+
+        engine.step(PlayAction(card_index=0))
+        observation = engine.get_observation(1)
+
+        self.assertEqual(len(observation.public_history), 1)
+        self.assertTrue(observation.public_history[0].drew_replacement)
+
+    def test_can_reconstruct_public_hand_knowledge_from_visible_history(self) -> None:
+        # Verifies that a player can rebuild another player's public hand
+        # knowledge using only turn history, reveals, and replacement draws.
+        engine = HanabiGameEngine(player_count=2, seed=20)
+        engine.hands[1] = [
+            Card(Color.BLUE, Rank.ONE),
+            Card(Color.RED, Rank.THREE),
+            Card(Color.GREEN, Rank.FOUR),
+            Card(Color.YELLOW, Rank.TWO),
+            Card(Color.WHITE, Rank.FIVE),
+        ]
+
+        engine.step(HintColorAction(target_player=1, color=Color.BLUE))
+        engine.step(PlayAction(card_index=0))
+        observation = engine.get_observation(0)
+        reconstructed_knowledge = reconstruct_public_hand_knowledge(observation, 1)
+
+        self.assertEqual(len(reconstructed_knowledge), len(engine.hands[1]))
+        self.assertEqual(
+            reconstructed_knowledge[-1].possible_colors,
+            frozenset({Color.RED, Color.YELLOW, Color.GREEN, Color.BLUE, Color.WHITE}),
+        )
+        self.assertEqual(
+            reconstructed_knowledge[0].possible_colors,
+            frozenset({Color.RED, Color.YELLOW, Color.GREEN, Color.WHITE}),
+        )
 
     def test_hint_action_accepts_custom_presentation_order(self) -> None:
         # Verifies that the engine accepts a custom reveal ordering for hints

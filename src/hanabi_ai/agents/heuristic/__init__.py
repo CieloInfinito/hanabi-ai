@@ -2,6 +2,6 @@
 
 from .base import BaseHeuristicAgent
 from .basic import BasicHeuristicAgent
-from .conservative import ConservativeHeuristicAgent
+from .convention import ConventionHeuristicAgent
 
-__all__ = ["BaseHeuristicAgent", "BasicHeuristicAgent", "ConservativeHeuristicAgent"]
+__all__ = ["BaseHeuristicAgent", "BasicHeuristicAgent", "ConventionHeuristicAgent"]

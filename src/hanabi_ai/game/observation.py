@@ -3,8 +3,22 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 
-from .actions import Action
-from .cards import CARD_COUNTS_BY_RANK, HANABI_COLORS, HANABI_RANKS, Card, Color, Rank
+from .actions import (
+    Action,
+    DiscardAction,
+    HintColorAction,
+    HintRankAction,
+    PlayAction,
+)
+from .cards import (
+    CARD_COUNTS_BY_RANK,
+    HANABI_COLORS,
+    HANABI_RANKS,
+    Card,
+    Color,
+    Rank,
+    hand_size_for_player_count,
+)
 from .rules import Fireworks
 
 
@@ -29,6 +43,7 @@ class PublicTurnRecord:
     revealed_indices: tuple[int, ...] = ()
     revealed_groups: tuple[tuple[int, ...], ...] = ()
     fireworks_before: dict[Color, int] | None = None
+    drew_replacement: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -219,6 +234,128 @@ def apply_rank_hint_to_knowledge(
             )
 
     return updated_knowledge
+
+
+def apply_color_hint_to_public_knowledge(
+    knowledge: list[CardKnowledge],
+    revealed_indices: tuple[int, ...],
+    color: Color,
+) -> list[CardKnowledge]:
+    """
+    Apply a public color hint update using only revealed indices.
+    """
+    revealed_index_set = set(revealed_indices)
+    updated_knowledge: list[CardKnowledge] = []
+
+    for index, knowledge_item in enumerate(knowledge):
+        if index in revealed_index_set:
+            updated_knowledge.append(
+                CardKnowledge(
+                    possible_colors=frozenset({color}),
+                    possible_ranks=knowledge_item.possible_ranks,
+                    hinted_color=color,
+                    hinted_rank=knowledge_item.hinted_rank,
+                )
+            )
+        else:
+            updated_knowledge.append(
+                CardKnowledge(
+                    possible_colors=knowledge_item.possible_colors.difference({color}),
+                    possible_ranks=knowledge_item.possible_ranks,
+                    hinted_color=knowledge_item.hinted_color,
+                    hinted_rank=knowledge_item.hinted_rank,
+                )
+            )
+
+    return updated_knowledge
+
+
+def apply_rank_hint_to_public_knowledge(
+    knowledge: list[CardKnowledge],
+    revealed_indices: tuple[int, ...],
+    rank: Rank,
+) -> list[CardKnowledge]:
+    """
+    Apply a public rank hint update using only revealed indices.
+    """
+    revealed_index_set = set(revealed_indices)
+    updated_knowledge: list[CardKnowledge] = []
+
+    for index, knowledge_item in enumerate(knowledge):
+        if index in revealed_index_set:
+            updated_knowledge.append(
+                CardKnowledge(
+                    possible_colors=knowledge_item.possible_colors,
+                    possible_ranks=frozenset({rank}),
+                    hinted_color=knowledge_item.hinted_color,
+                    hinted_rank=rank,
+                )
+            )
+        else:
+            updated_knowledge.append(
+                CardKnowledge(
+                    possible_colors=knowledge_item.possible_colors,
+                    possible_ranks=knowledge_item.possible_ranks.difference({rank}),
+                    hinted_color=knowledge_item.hinted_color,
+                    hinted_rank=knowledge_item.hinted_rank,
+                )
+            )
+
+    return updated_knowledge
+
+
+def reconstruct_public_hand_knowledge(
+    observation: PlayerObservation,
+    target_player: int,
+) -> tuple[CardKnowledge, ...]:
+    """
+    Reconstruct one player's public hand knowledge from the visible turn history.
+    """
+    player_count = len(observation.other_player_hands) + 1
+    knowledge = create_initial_hand_knowledge(hand_size_for_player_count(player_count))
+
+    for record in observation.public_history:
+        action = record.action
+        if isinstance(action, HintColorAction) and action.target_player == target_player:
+            knowledge = apply_color_hint_to_public_knowledge(
+                knowledge,
+                record.revealed_indices,
+                action.color,
+            )
+            continue
+
+        if isinstance(action, HintRankAction) and action.target_player == target_player:
+            knowledge = apply_rank_hint_to_public_knowledge(
+                knowledge,
+                record.revealed_indices,
+                action.rank,
+            )
+            continue
+
+        if record.player_id != target_player:
+            continue
+
+        if isinstance(action, (PlayAction, DiscardAction)):
+            knowledge.pop(action.card_index)
+            if record.drew_replacement:
+                knowledge.append(create_initial_card_knowledge())
+
+    target_hand_size = (
+        len(observation.hand_knowledge)
+        if target_player == observation.observing_player
+        else len(
+            next(
+                hand.cards
+                for hand in observation.other_player_hands
+                if hand.player_id == target_player
+            )
+        )
+    )
+
+    if len(knowledge) != target_hand_size:
+        knowledge = knowledge[:target_hand_size]
+
+    return tuple(knowledge)
 
 
 def build_player_observation(

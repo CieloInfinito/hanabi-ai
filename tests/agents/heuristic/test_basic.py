@@ -66,7 +66,7 @@ class BasicHeuristicAgentTests(SharedHeuristicAgentTests, unittest.TestCase):
         )
 
     def test_basic_heuristic_agent_does_not_apply_color_hint_private_inference(self) -> None:
-        # Verifies that the basic heuristic ignores the conservative
+        # Verifies that the basic heuristic ignores the convention
         # color-order convention when interpreting public hint history.
         agent = BasicHeuristicAgent()
         observation = PlayerObservation(

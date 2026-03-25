@@ -16,12 +16,12 @@ from hanabi_ai.game.observation import (
     ObservedHand,
     PlayerObservation,
     PublicTurnRecord,
-    apply_color_hint_to_knowledge,
-    apply_rank_hint_to_knowledge,
+    apply_color_hint_to_public_knowledge,
+    apply_rank_hint_to_public_knowledge,
     build_visible_card_counts,
-    create_initial_hand_knowledge,
     estimate_card_distribution,
     get_definitely_playable_card_indices,
+    reconstruct_public_hand_knowledge,
 )
 from hanabi_ai.game.rules import is_card_already_played, is_card_playable
 
@@ -109,6 +109,8 @@ class BaseHeuristicAgent:
             for action in observation.legal_actions
             if isinstance(action, PlayAction)
         }
+        best_action: PlayAction | None = None
+        best_score: tuple[float, float, float, int] | None = None
 
         for index, knowledge in enumerate(observation.hand_knowledge):
             if index not in legal_plays:
@@ -118,15 +120,18 @@ class BaseHeuristicAgent:
             if possible_cards and all(
                 is_card_playable(card, observation.fireworks) for card in possible_cards
             ):
-                return legal_plays[index]
+                score = self._guaranteed_play_score(knowledge, observation, index=index)
+                if best_score is None or score > best_score:
+                    best_action = legal_plays[index]
+                    best_score = score
 
-        return None
+        return best_action
 
     def _choose_hint_for_other_players(
         self, observation: PlayerObservation
     ) -> tuple[
         HintColorAction | HintRankAction | None,
-        tuple[int, int, int, int, int, int, int, int] | None,
+        tuple[int, int, int, int, int, int, int, int, int] | None,
     ]:
         legal_hints = [
             action
@@ -137,7 +142,7 @@ class BaseHeuristicAgent:
             return None, None
 
         best_hint: HintColorAction | HintRankAction | None = None
-        best_score: tuple[int, int, int, int, int, int, int, int] | None = None
+        best_score: tuple[int, int, int, int, int, int, int, int, int] | None = None
 
         for observed_hand in observation.other_player_hands:
             candidate_hints = self._build_candidate_hints(
@@ -200,7 +205,7 @@ class BaseHeuristicAgent:
         self,
         observation: PlayerObservation,
         *,
-        best_hint_score: tuple[int, int, int, int, int, int, int, int] | None,
+        best_hint_score: tuple[int, int, int, int, int, int, int, int, int] | None,
     ) -> PlayAction | None:
         play_actions = [
             action
@@ -259,13 +264,13 @@ class BaseHeuristicAgent:
     ) -> list[
         tuple[
             HintColorAction | HintRankAction,
-            tuple[int, int, int, int, int, int, int, int],
+            tuple[int, int, int, int, int, int, int, int, int],
         ]
     ]:
         candidates: list[
             tuple[
                 HintColorAction | HintRankAction,
-                tuple[int, int, int, int, int, int, int, int],
+                tuple[int, int, int, int, int, int, int, int, int],
             ]
         ] = []
 
@@ -284,6 +289,7 @@ class BaseHeuristicAgent:
                         (
                             color_hint,
                             self._score_hint_cards(
+                                observed_hand,
                                 observed_hand.cards,
                                 observation,
                                 color_hint,
@@ -305,6 +311,7 @@ class BaseHeuristicAgent:
                         (
                             rank_hint,
                             self._score_hint_cards(
+                                observed_hand,
                                 observed_hand.cards,
                                 observation,
                                 rank_hint,
@@ -319,12 +326,20 @@ class BaseHeuristicAgent:
 
     def _score_hint_cards(
         self,
+        observed_hand: ObservedHand,
         cards: tuple[Card, ...],
         observation: PlayerObservation,
         hint_action: HintColorAction | HintRankAction,
         matches_hint,
-    ) -> tuple[int, int, int, int, int, int, int, int]:
+    ) -> tuple[int, int, int, int, int, int, int, int, int]:
         guaranteed_play_hits = self._count_guaranteed_plays_after_hint(
+            observed_hand,
+            cards,
+            observation,
+            hint_action,
+        )
+        information_gain = self._information_gain_after_hint(
+            observed_hand,
             cards,
             observation,
             hint_action,
@@ -362,22 +377,36 @@ class BaseHeuristicAgent:
             -non_playable_touched,
             critical_playable_hits,
             useful_hits,
+            information_gain,
             critical_useful_hits,
             -dead_hits,
         )
 
     def _count_guaranteed_plays_after_hint(
         self,
+        observed_hand: ObservedHand,
         cards: tuple[Card, ...],
         observation: PlayerObservation,
         hint_action: HintColorAction | HintRankAction,
     ) -> int:
-        hand_knowledge = create_initial_hand_knowledge(len(cards))
+        hand_knowledge = list(
+            reconstruct_public_hand_knowledge(observation, observed_hand.player_id)
+        )
+        definitely_playable_before = set(
+            get_definitely_playable_card_indices(
+                tuple(hand_knowledge),
+                observation.fireworks,
+            )
+        )
 
         if isinstance(hint_action, HintColorAction):
-            updated_knowledge = apply_color_hint_to_knowledge(
+            updated_knowledge = apply_color_hint_to_public_knowledge(
                 hand_knowledge,
-                list(cards),
+                tuple(
+                    index
+                    for index, card in enumerate(cards)
+                    if card.color == hint_action.color
+                ),
                 hint_action.color,
             )
             revealed_indices = tuple(
@@ -386,9 +415,13 @@ class BaseHeuristicAgent:
                 if card.color == hint_action.color
             )
         else:
-            updated_knowledge = apply_rank_hint_to_knowledge(
+            updated_knowledge = apply_rank_hint_to_public_knowledge(
                 hand_knowledge,
-                list(cards),
+                tuple(
+                    index
+                    for index, card in enumerate(cards)
+                    if card.rank == hint_action.rank
+                ),
                 hint_action.rank,
             )
             revealed_indices = tuple(
@@ -403,7 +436,64 @@ class BaseHeuristicAgent:
                 observation.fireworks,
             )
         )
-        return sum(index in definitely_playable for index in revealed_indices)
+        return sum(
+            index in definitely_playable and index not in definitely_playable_before
+            for index in revealed_indices
+        )
+
+    def _information_gain_after_hint(
+        self,
+        observed_hand: ObservedHand,
+        cards: tuple[Card, ...],
+        observation: PlayerObservation,
+        hint_action: HintColorAction | HintRankAction,
+    ) -> int:
+        before_knowledge = list(
+            reconstruct_public_hand_knowledge(observation, observed_hand.player_id)
+        )
+
+        if isinstance(hint_action, HintColorAction):
+            revealed_indices = tuple(
+                index
+                for index, card in enumerate(cards)
+                if card.color == hint_action.color
+            )
+            after_knowledge = apply_color_hint_to_public_knowledge(
+                before_knowledge,
+                revealed_indices,
+                hint_action.color,
+            )
+        else:
+            revealed_indices = tuple(
+                index
+                for index, card in enumerate(cards)
+                if card.rank == hint_action.rank
+            )
+            after_knowledge = apply_rank_hint_to_public_knowledge(
+                before_knowledge,
+                revealed_indices,
+                hint_action.rank,
+            )
+
+        gain = 0
+        for index, card in enumerate(cards):
+            before_size = self._knowledge_state_size(before_knowledge[index])
+            after_size = self._knowledge_state_size(after_knowledge[index])
+            delta = max(before_size - after_size, 0)
+            if delta == 0:
+                continue
+
+            if self._card_is_playable_now(card, observation):
+                gain += delta * 3
+            elif not self._card_is_dead(card, observation):
+                gain += delta * 2
+            else:
+                gain += delta
+
+        return gain
+
+    def _knowledge_state_size(self, knowledge: CardKnowledge) -> int:
+        return len(knowledge.possible_colors) * len(knowledge.possible_ranks)
 
     def _score_discard_knowledge(
         self, knowledge: CardKnowledge, observation: PlayerObservation
@@ -459,6 +549,38 @@ class BaseHeuristicAgent:
             probability
             for card, probability in card_distribution
             if is_card_playable(card, observation.fireworks)
+        )
+
+    def _guaranteed_play_score(
+        self,
+        knowledge: CardKnowledge,
+        observation: PlayerObservation,
+        *,
+        index: int,
+    ) -> tuple[float, float, float, int]:
+        card_distribution = estimate_card_distribution(knowledge, observation)
+        if not card_distribution:
+            return (0.0, 0.0, 0.0, -index)
+
+        five_probability = sum(
+            probability
+            for card, probability in card_distribution
+            if int(card.rank) == 5
+        )
+        critical_probability = sum(
+            probability
+            for card, probability in card_distribution
+            if self._card_is_critical(card, observation)
+        )
+        expected_rank = sum(
+            int(card.rank) * probability for card, probability in card_distribution
+        )
+
+        return (
+            five_probability,
+            critical_probability,
+            expected_rank,
+            -index,
         )
 
     def _dead_probability(

@@ -6,7 +6,7 @@ The project currently includes three baseline agents:
 
 - `RandomAgent`
 - `BasicHeuristicAgent`
-- `ConservativeHeuristicAgent`
+- `ConventionHeuristicAgent`
 
 The heuristic agents use only partial observations and public information.
 
@@ -60,9 +60,9 @@ When a risky self-play is the only active option left, the baseline can still
 take a high-confidence probabilistic play, but only under a stricter threshold
 that becomes more conservative as strike tokens increase.
 
-## `ConservativeHeuristicAgent`
+## `ConventionHeuristicAgent`
 
-Defined in `src/hanabi_ai/agents/heuristic/conservative.py`.
+Defined in `src/hanabi_ai/agents/heuristic/convention.py`.
 
 This variant keeps the same local priorities as the basic heuristic but adds
 two private communication conventions:
@@ -74,7 +74,7 @@ two private communication conventions:
 These conventions intentionally live in the agent layer rather than the engine,
 so different bots can adopt different hidden signaling schemes.
 
-Aside from those extra conventions, the conservative heuristic inherits the
+Aside from those extra conventions, the convention heuristic inherits the
 same remaining-copy weighting, critical-card protection, and risk-aware
 discard logic from the shared heuristic base, along with the same
 actionability-first hint scoring and bounded probabilistic self-play policy.
@@ -84,7 +84,7 @@ actionability-first hint scoring and bounded probabilistic self-play policy.
 The CLI renderers can optionally display how advanced heuristic agents interpret
 public hint history according to their private conventions.
 
-This currently matters most for the conservative heuristic, which can:
+This currently matters most for the convention heuristic, which can:
 
 - refine own-hand knowledge from color-hint ordering
 - refine own-hand knowledge from grouped rank hints

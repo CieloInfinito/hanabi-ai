@@ -26,9 +26,9 @@ from hanabi_ai.game.observation import (
 from hanabi_ai.game.rules import is_card_playable
 
 
-class ConservativeHeuristicAgent(BaseHeuristicAgent):
+class ConventionHeuristicAgent(BaseHeuristicAgent):
     """
-    Conservative rule-based Hanabi baseline using only partial observations.
+    Convention-aware Hanabi heuristic using only partial observations.
 
     Policy summary:
     - Play an own-hand card only when current knowledge guarantees it is playable.
@@ -50,7 +50,7 @@ class ConservativeHeuristicAgent(BaseHeuristicAgent):
 
     Shared public-information inference such as teammate-hand visibility,
     fireworks tracking, and discard-pile reasoning is inherited from the
-    heuristic base class and is not unique to this conservative variant.
+    heuristic base class and is not unique to this convention-aware variant.
 
     The agent never accesses hidden information from its own hand directly.
     """
@@ -107,12 +107,12 @@ class ConservativeHeuristicAgent(BaseHeuristicAgent):
 
         if isinstance(record.action, HintColorAction) and record.revealed_indices:
             notes.append(
-                "Conservative convention: color hints point matching cards in ascending rank order, including equal-rank ties."
+                "Convention heuristic: color hints point matching cards in ascending rank order, including equal-rank ties."
             )
 
         if isinstance(record.action, HintRankAction) and record.revealed_groups:
             notes.append(
-                "Conservative convention: rank hints group playable cards first, then non-playable cards."
+                "Convention heuristic: rank hints group playable cards first, then non-playable cards."
             )
 
         return tuple(notes)
@@ -352,8 +352,8 @@ class ConservativeHeuristicAgent(BaseHeuristicAgent):
 
 if __name__ == "__main__":
     raise SystemExit(
-        "ConservativeHeuristicAgent is a library module. "
-        "Run 'hanabi-demo-conservative' or "
-        "'python -m hanabi_ai.tools.demo_conservative_trace' "
+        "ConventionHeuristicAgent is a library module. "
+        "Run 'hanabi-demo-convention' or "
+        "'python -m hanabi_ai.tools.demo_convention_trace' "
         "to inspect a full game trace."
     )

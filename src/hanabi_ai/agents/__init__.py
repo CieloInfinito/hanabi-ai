@@ -2,12 +2,12 @@
 
 from hanabi_ai.agents.heuristic.base import BaseHeuristicAgent
 from hanabi_ai.agents.heuristic.basic import BasicHeuristicAgent
-from hanabi_ai.agents.heuristic.conservative import ConservativeHeuristicAgent
+from hanabi_ai.agents.heuristic.convention import ConventionHeuristicAgent
 from hanabi_ai.agents.random import RandomAgent
 
 __all__ = [
     "BaseHeuristicAgent",
     "BasicHeuristicAgent",
-    "ConservativeHeuristicAgent",
+    "ConventionHeuristicAgent",
     "RandomAgent",
 ]

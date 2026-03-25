@@ -11,6 +11,12 @@ from hanabi_ai.game.actions import (
 )
 from hanabi_ai.game.cards import Card, Color, Rank
 from hanabi_ai.game.engine import HanabiGameEngine
+from hanabi_ai.game.observation import (
+    CardKnowledge,
+    ObservedHand,
+    PlayerObservation,
+    PublicTurnRecord,
+)
 
 
 # Shared heuristic tests verify the baseline decision logic that every
@@ -37,6 +43,60 @@ class SharedHeuristicAgentTests(ABC):
         action = normalize_agent_decision(agent.act(observation)).action
 
         self.assertEqual(action, PlayAction(card_index=0))
+
+    def test_heuristic_agent_prefers_safe_five_to_recover_hint(self) -> None:
+        # Verifies that, among multiple safe plays, the agent prefers a known
+        # five because it recovers a hint token on success.
+        engine = HanabiGameEngine(player_count=2, seed=72)
+        engine.hint_tokens = 0
+        engine.fireworks[Color.RED] = 1
+        engine.fireworks[Color.BLUE] = 4
+        engine.knowledge_by_player[0][0] = engine.knowledge_by_player[0][0].__class__(
+            possible_colors=frozenset({Color.RED}),
+            possible_ranks=frozenset({Rank.TWO}),
+            hinted_color=Color.RED,
+            hinted_rank=Rank.TWO,
+        )
+        engine.knowledge_by_player[0][1] = engine.knowledge_by_player[0][1].__class__(
+            possible_colors=frozenset({Color.BLUE}),
+            possible_ranks=frozenset({Rank.FIVE}),
+            hinted_color=Color.BLUE,
+            hinted_rank=Rank.FIVE,
+        )
+        observation = engine.get_observation(0)
+        agent = self.make_agent()
+
+        action = normalize_agent_decision(agent.act(observation)).action
+
+        self.assertEqual(action, PlayAction(card_index=1))
+
+    def test_heuristic_agent_prefers_safe_critical_play_over_lower_value_safe_play(self) -> None:
+        # Verifies that, among multiple safe plays, the agent prefers the one
+        # that is publicly the last remaining live copy.
+        engine = HanabiGameEngine(player_count=2, seed=73)
+        engine.discard_pile.extend(
+            [Card(Color.RED, Rank.THREE), Card(Color.RED, Rank.THREE)]
+        )
+        engine.fireworks[Color.RED] = 2
+        engine.fireworks[Color.GREEN] = 0
+        engine.knowledge_by_player[0][0] = engine.knowledge_by_player[0][0].__class__(
+            possible_colors=frozenset({Color.GREEN}),
+            possible_ranks=frozenset({Rank.ONE}),
+            hinted_color=Color.GREEN,
+            hinted_rank=Rank.ONE,
+        )
+        engine.knowledge_by_player[0][1] = engine.knowledge_by_player[0][1].__class__(
+            possible_colors=frozenset({Color.RED}),
+            possible_ranks=frozenset({Rank.THREE}),
+            hinted_color=Color.RED,
+            hinted_rank=Rank.THREE,
+        )
+        observation = engine.get_observation(0)
+        agent = self.make_agent()
+
+        action = normalize_agent_decision(agent.act(observation)).action
+
+        self.assertEqual(action, PlayAction(card_index=1))
 
     def test_heuristic_agent_gives_hint_for_other_players_playable_card(self) -> None:
         # Verifies that, when it has no safe self-play, the agent prioritizes
@@ -92,6 +152,72 @@ class SharedHeuristicAgentTests(ABC):
 
         self.assertEqual(action, HintRankAction(target_player=1, rank=Rank.ONE))
 
+    def test_heuristic_agent_avoids_redundant_hint_when_playable_card_is_already_known(self) -> None:
+        # Verifies that the agent avoids repeating a hint that would not add
+        # new certainty about an already-known playable card.
+        observation = PlayerObservation(
+            observing_player=0,
+            current_player=0,
+            hand_knowledge=(
+                CardKnowledge(
+                    possible_colors=frozenset({Color.RED, Color.YELLOW}),
+                    possible_ranks=frozenset({Rank.TWO, Rank.THREE}),
+                ),
+                CardKnowledge(
+                    possible_colors=frozenset({Color.BLUE, Color.GREEN}),
+                    possible_ranks=frozenset({Rank.ONE, Rank.FIVE}),
+                ),
+                CardKnowledge(
+                    possible_colors=frozenset({Color.WHITE}),
+                    possible_ranks=frozenset({Rank.FOUR}),
+                ),
+                CardKnowledge(
+                    possible_colors=frozenset({Color.RED, Color.GREEN}),
+                    possible_ranks=frozenset({Rank.ONE, Rank.TWO}),
+                ),
+                CardKnowledge(
+                    possible_colors=frozenset({Color.YELLOW, Color.WHITE}),
+                    possible_ranks=frozenset({Rank.THREE, Rank.FIVE}),
+                ),
+            ),
+            other_player_hands=(
+                ObservedHand(
+                    player_id=1,
+                    cards=(
+                        Card(Color.BLUE, Rank.ONE),
+                        Card(Color.RED, Rank.TWO),
+                        Card(Color.GREEN, Rank.THREE),
+                        Card(Color.YELLOW, Rank.FOUR),
+                        Card(Color.WHITE, Rank.FIVE),
+                    ),
+                ),
+            ),
+            fireworks={color: 0 for color in Color},
+            discard_pile=(),
+            hint_tokens=1,
+            strike_tokens=0,
+            deck_size=40,
+            public_history=(
+                PublicTurnRecord(
+                    player_id=0,
+                    action=HintRankAction(target_player=1, rank=Rank.ONE),
+                    revealed_indices=(0,),
+                    revealed_groups=((0,),),
+                ),
+            ),
+            legal_actions=(
+                HintColorAction(target_player=1, color=Color.BLUE),
+                HintColorAction(target_player=1, color=Color.RED),
+                HintRankAction(target_player=1, rank=Rank.ONE),
+                HintRankAction(target_player=1, rank=Rank.TWO),
+            ),
+        )
+        agent = self.make_agent()
+
+        action = normalize_agent_decision(agent.act(observation)).action
+
+        self.assertNotEqual(action, HintRankAction(target_player=1, rank=Rank.ONE))
+
     def test_heuristic_agent_prefers_cleaner_hint_when_playable_value_is_tied(self) -> None:
         # Verifies that, when two hints expose the same immediate playable value,
         # the agent prefers the less noisy hint that touches fewer extra cards.
@@ -109,6 +235,88 @@ class SharedHeuristicAgentTests(ABC):
         action = normalize_agent_decision(agent.act(observation)).action
 
         self.assertEqual(action, HintRankAction(target_player=1, rank=Rank.ONE))
+
+    def test_heuristic_agent_prefers_hint_with_higher_useful_information_gain(self) -> None:
+        # Verifies that, when no hint creates an immediate safe play, the agent
+        # prefers the hint that reduces more useful uncertainty for the receiver.
+        observation = PlayerObservation(
+            observing_player=0,
+            current_player=0,
+            hand_knowledge=(
+                CardKnowledge(
+                    possible_colors=frozenset({Color.RED, Color.YELLOW}),
+                    possible_ranks=frozenset({Rank.TWO, Rank.THREE}),
+                ),
+            ),
+            other_player_hands=(
+                ObservedHand(
+                    player_id=1,
+                    cards=(
+                        Card(Color.RED, Rank.TWO),
+                        Card(Color.RED, Rank.FIVE),
+                        Card(Color.BLUE, Rank.THREE),
+                        Card(Color.GREEN, Rank.FOUR),
+                        Card(Color.YELLOW, Rank.FIVE),
+                    ),
+                ),
+            ),
+            fireworks={color: 0 for color in Color},
+            discard_pile=(),
+            hint_tokens=1,
+            strike_tokens=0,
+            deck_size=40,
+            public_history=( ),
+            legal_actions=(
+                HintColorAction(target_player=1, color=Color.RED),
+                HintRankAction(target_player=1, rank=Rank.FIVE),
+            ),
+        )
+        agent = self.make_agent()
+
+        action = normalize_agent_decision(agent.act(observation)).action
+
+        self.assertEqual(action, HintColorAction(target_player=1, color=Color.RED))
+
+    def test_heuristic_agent_values_negative_information_on_unhinted_cards(self) -> None:
+        # Verifies that the agent values a hint that rules out possibilities on
+        # several other cards, not only the cards directly pointed at.
+        observation = PlayerObservation(
+            observing_player=0,
+            current_player=0,
+            hand_knowledge=(
+                CardKnowledge(
+                    possible_colors=frozenset({Color.RED, Color.BLUE}),
+                    possible_ranks=frozenset({Rank.ONE, Rank.TWO}),
+                ),
+            ),
+            other_player_hands=(
+                ObservedHand(
+                    player_id=1,
+                    cards=(
+                        Card(Color.RED, Rank.THREE),
+                        Card(Color.BLUE, Rank.TWO),
+                        Card(Color.GREEN, Rank.THREE),
+                        Card(Color.YELLOW, Rank.FOUR),
+                        Card(Color.WHITE, Rank.FIVE),
+                    ),
+                ),
+            ),
+            fireworks={color: 0 for color in Color},
+            discard_pile=(),
+            hint_tokens=1,
+            strike_tokens=0,
+            deck_size=40,
+            public_history=(),
+            legal_actions=(
+                HintColorAction(target_player=1, color=Color.RED),
+                HintRankAction(target_player=1, rank=Rank.TWO),
+            ),
+        )
+        agent = self.make_agent()
+
+        action = normalize_agent_decision(agent.act(observation)).action
+
+        self.assertEqual(action, HintColorAction(target_player=1, color=Color.RED))
 
     def test_heuristic_agent_discards_definitely_useless_card(self) -> None:
         # Verifies that the agent discards one of its own cards when it knows

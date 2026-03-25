@@ -272,6 +272,7 @@ class HanabiGameEngine:
                     fireworks_before=dict(record.fireworks_before)
                     if record.fireworks_before is not None
                     else None,
+                    drew_replacement=record.drew_replacement,
                 )
                 for record in self.history
             ),

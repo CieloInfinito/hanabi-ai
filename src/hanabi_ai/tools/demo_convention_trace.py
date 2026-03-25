@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import argparse
 
-from hanabi_ai.agents.heuristic.conservative import ConservativeHeuristicAgent
+from hanabi_ai.agents.heuristic.convention import ConventionHeuristicAgent
 from hanabi_ai.training.self_play import run_self_play_game_with_trace
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run a 2-player Hanabi trace with two conservative heuristic agents."
+        description="Run a 2-player Hanabi trace with two convention heuristic agents."
     )
     parser.add_argument(
         "--game-seed",
@@ -21,7 +21,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    agents = [ConservativeHeuristicAgent(), ConservativeHeuristicAgent()]
+    agents = [ConventionHeuristicAgent(), ConventionHeuristicAgent()]
     traced_game = run_self_play_game_with_trace(agents, seed=args.game_seed)
     print(traced_game.trace)
 

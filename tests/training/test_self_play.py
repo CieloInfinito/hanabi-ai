@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from hanabi_ai.agents.heuristic.conservative import ConservativeHeuristicAgent
+from hanabi_ai.agents.heuristic.convention import ConventionHeuristicAgent
 from hanabi_ai.agents.random import RandomAgent
 from hanabi_ai.game.actions import AgentDecision, HintColorAction, HintPresentation
 from hanabi_ai.training.self_play import (
@@ -136,7 +136,7 @@ class SelfPlayTests(unittest.TestCase):
         # Verifies that the heuristic baseline outperforms the random baseline
         # on average score under a fixed deterministic evaluation setup.
         heuristic_evaluation = evaluate_self_play(
-            lambda player_id, game_index: ConservativeHeuristicAgent(),
+            lambda player_id, game_index: ConventionHeuristicAgent(),
             player_count=2,
             game_count=30,
             seed_base=0,

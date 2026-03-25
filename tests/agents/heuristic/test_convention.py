@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from hanabi_ai.agents.heuristic.conservative import ConservativeHeuristicAgent
+from hanabi_ai.agents.heuristic.convention import ConventionHeuristicAgent
 from hanabi_ai.game.actions import (
     AgentDecision,
     HintColorAction,
@@ -16,14 +16,14 @@ from hanabi_ai.game.observation import CardKnowledge, ObservedHand, PlayerObserv
 from ._shared import SharedHeuristicAgentTests
 
 
-# Conservative heuristic tests verify that this variant emits and
+# Convention heuristic tests verify that this variant emits and
 # interprets its private color-order and rank-playability conventions.
-class ConservativeHeuristicAgentTests(SharedHeuristicAgentTests, unittest.TestCase):
+class ConventionHeuristicAgentTests(SharedHeuristicAgentTests, unittest.TestCase):
     def make_agent(self):
-        return ConservativeHeuristicAgent()
+        return ConventionHeuristicAgent()
 
-    def test_conservative_heuristic_agent_gives_hint_for_other_players_playable_card_with_private_presentation(self) -> None:
-        # Verifies that the conservative heuristic augments an otherwise shared
+    def test_convention_heuristic_agent_gives_hint_for_other_players_playable_card_with_private_presentation(self) -> None:
+        # Verifies that the convention heuristic augments an otherwise shared
         # rank hint with its private presentation convention.
         engine = HanabiGameEngine(player_count=2, seed=32)
         engine.hands[1] = [
@@ -34,7 +34,7 @@ class ConservativeHeuristicAgentTests(SharedHeuristicAgentTests, unittest.TestCa
             Card(Color.WHITE, Rank.FIVE),
         ]
         observation = engine.get_observation(0)
-        agent = ConservativeHeuristicAgent()
+        agent = ConventionHeuristicAgent()
 
         decision = agent.act(observation)
 
@@ -45,11 +45,11 @@ class ConservativeHeuristicAgentTests(SharedHeuristicAgentTests, unittest.TestCa
             HintPresentation(revealed_indices=(0,), revealed_groups=((0,),)),
         )
 
-    def test_conservative_heuristic_agent_keeps_ascending_color_hint_convention_private(self) -> None:
+    def test_convention_heuristic_agent_keeps_ascending_color_hint_convention_private(self) -> None:
         # Verifies that the agent can refine rank knowledge from an
         # ascending-order color-hint convention without requiring engine support,
         # including the fact that two hinted cards can be inferred to share a rank.
-        agent = ConservativeHeuristicAgent()
+        agent = ConventionHeuristicAgent()
         hand_knowledge = (
             CardKnowledge(
                 possible_colors=frozenset({Color.YELLOW}),
@@ -93,10 +93,10 @@ class ConservativeHeuristicAgentTests(SharedHeuristicAgentTests, unittest.TestCa
             frozenset({Rank.FOUR, Rank.FIVE}),
         )
 
-    def test_conservative_heuristic_agent_uses_public_hint_history_for_private_convention(self) -> None:
+    def test_convention_heuristic_agent_uses_public_hint_history_for_private_convention(self) -> None:
         # Verifies that the agent consumes public hint history from the
         # observation and applies its private ascending-order convention.
-        agent = ConservativeHeuristicAgent()
+        agent = ConventionHeuristicAgent()
         observation = PlayerObservation(
             observing_player=0,
             current_player=0,
@@ -165,8 +165,8 @@ class ConservativeHeuristicAgentTests(SharedHeuristicAgentTests, unittest.TestCa
             frozenset({Rank.TWO}),
         )
 
-    def test_conservative_heuristic_agent_prefers_rank_hint_when_it_creates_safe_play(self) -> None:
-        # Verifies that the conservative heuristic may choose a rank hint when
+    def test_convention_heuristic_agent_prefers_rank_hint_when_it_creates_safe_play(self) -> None:
+        # Verifies that the convention heuristic may choose a rank hint when
         # that more directly creates a safe play than a broader color hint.
         engine = HanabiGameEngine(player_count=2, seed=41)
         engine.hands[1] = [
@@ -177,7 +177,7 @@ class ConservativeHeuristicAgentTests(SharedHeuristicAgentTests, unittest.TestCa
             Card(Color.YELLOW, Rank.TWO),
         ]
         observation = engine.get_observation(0)
-        agent = ConservativeHeuristicAgent()
+        agent = ConventionHeuristicAgent()
 
         decision = agent.act(observation)
 
@@ -194,7 +194,7 @@ class ConservativeHeuristicAgentTests(SharedHeuristicAgentTests, unittest.TestCa
             ),
         )
 
-    def test_conservative_heuristic_agent_emits_rank_hint_groups_by_playability(self) -> None:
+    def test_convention_heuristic_agent_emits_rank_hint_groups_by_playability(self) -> None:
         # Verifies that rank hints are grouped by current playability:
         # playable cards first, then non-playable cards.
         engine = HanabiGameEngine(player_count=2, seed=42)
@@ -207,7 +207,7 @@ class ConservativeHeuristicAgentTests(SharedHeuristicAgentTests, unittest.TestCa
             Card(Color.WHITE, Rank.FIVE),
         ]
         observation = engine.get_observation(0)
-        agent = ConservativeHeuristicAgent()
+        agent = ConventionHeuristicAgent()
 
         decision = agent._attach_hint_presentation(
             HintRankAction(target_player=1, rank=Rank.TWO),
@@ -223,10 +223,10 @@ class ConservativeHeuristicAgentTests(SharedHeuristicAgentTests, unittest.TestCa
             ),
         )
 
-    def test_conservative_heuristic_agent_uses_rank_hint_groups_from_public_history(self) -> None:
+    def test_convention_heuristic_agent_uses_rank_hint_groups_from_public_history(self) -> None:
         # Verifies that the agent interprets grouped rank hints using the
         # playability state from when the hint was given.
-        agent = ConservativeHeuristicAgent()
+        agent = ConventionHeuristicAgent()
         observation = PlayerObservation(
             observing_player=0,
             current_player=0,

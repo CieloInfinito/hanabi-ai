@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 
 from hanabi_ai.agents.heuristic.basic import BasicHeuristicAgent
-from hanabi_ai.agents.heuristic.conservative import ConservativeHeuristicAgent
+from hanabi_ai.agents.heuristic.convention import ConventionHeuristicAgent
 from hanabi_ai.game.actions import HintColorAction, HintRankAction
 from hanabi_ai.game.actions import PlayAction
 from hanabi_ai.game.cards import Card, Color, Rank
@@ -66,8 +66,8 @@ class VisualizationCliTests(unittest.TestCase):
         self.assertIn("Action:", rendered)
         self.assertIn("Score:", rendered)
 
-    def test_render_player_observation_shows_conservative_private_interpretation(self) -> None:
-        # Verifies that CLI observation rendering can display the conservative
+    def test_render_player_observation_shows_convention_private_interpretation(self) -> None:
+        # Verifies that CLI observation rendering can display the convention
         # agent's private reading of public hint history.
         observation = PlayerObservation(
             observing_player=0,
@@ -117,16 +117,16 @@ class VisualizationCliTests(unittest.TestCase):
 
         rendered = render_player_observation(
             observation,
-            viewer_agent=ConservativeHeuristicAgent(),
+            viewer_agent=ConventionHeuristicAgent(),
         )
 
         self.assertIn(
-            "Own hand knowledge with ConservativeHeuristicAgent conventions:",
+            "Own hand knowledge with ConventionHeuristicAgent conventions:",
             rendered,
         )
         self.assertIn("Last revealed groups: [0] then [1] then [4] then [3]", rendered)
         self.assertIn(
-            "Private interpretation: Conservative convention: color hints point matching cards in ascending rank order, including equal-rank ties.",
+            "Private interpretation: Convention heuristic: color hints point matching cards in ascending rank order, including equal-rank ties.",
             rendered,
         )
 
@@ -173,9 +173,9 @@ class VisualizationCliTests(unittest.TestCase):
         self.assertNotIn("Own hand knowledge with BasicHeuristicAgent conventions:", rendered)
         self.assertNotIn("Private interpretation:", rendered)
 
-    def test_render_step_result_shows_rank_hint_groups_for_conservative_agent(self) -> None:
+    def test_render_step_result_shows_rank_hint_groups_for_convention_agent(self) -> None:
         # Verifies that step-result rendering exposes grouped rank hints and
-        # their conservative private meaning.
+        # their convention-based private meaning.
         engine = HanabiGameEngine(player_count=2, seed=42)
         engine.fireworks[Color.RED] = 1
         engine.hands[1] = [
@@ -187,7 +187,7 @@ class VisualizationCliTests(unittest.TestCase):
         ]
 
         result = engine.step(
-            ConservativeHeuristicAgent()._attach_hint_presentation(
+            ConventionHeuristicAgent()._attach_hint_presentation(
                 HintRankAction(target_player=1, rank=Rank.TWO),
                 engine.get_observation(0),
             )
@@ -195,12 +195,12 @@ class VisualizationCliTests(unittest.TestCase):
 
         rendered = render_step_result(
             result,
-            acting_agent=ConservativeHeuristicAgent(),
+            acting_agent=ConventionHeuristicAgent(),
         )
 
         self.assertIn("Revealed groups: [0] then [1, 3]", rendered)
         self.assertIn(
-            "Private interpretation: Conservative convention: rank hints group playable cards first, then non-playable cards.",
+            "Private interpretation: Convention heuristic: rank hints group playable cards first, then non-playable cards.",
             rendered,
         )
 

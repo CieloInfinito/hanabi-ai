@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 
 from hanabi_ai.agents.heuristic.basic import BasicHeuristicAgent
-from hanabi_ai.agents.heuristic.conservative import ConservativeHeuristicAgent
+from hanabi_ai.agents.heuristic.convention import ConventionHeuristicAgent
 from hanabi_ai.agents.random import RandomAgent
 from hanabi_ai.training.self_play import SelfPlayEvaluation, evaluate_self_play
 
@@ -53,8 +53,8 @@ def main() -> None:
         game_count=args.games,
         seed_base=args.seed_base,
     )
-    conservative_evaluation = evaluate_self_play(
-        lambda player_id, game_index: ConservativeHeuristicAgent(),
+    convention_evaluation = evaluate_self_play(
+        lambda player_id, game_index: ConventionHeuristicAgent(),
         player_count=args.players,
         game_count=args.games,
         seed_base=args.seed_base,
@@ -70,7 +70,7 @@ def main() -> None:
 
     print(_format_evaluation("BasicHeuristicAgent", basic_evaluation))
     print()
-    print(_format_evaluation("ConservativeHeuristicAgent", conservative_evaluation))
+    print(_format_evaluation("ConventionHeuristicAgent", convention_evaluation))
     print()
     print(_format_evaluation("RandomAgent", random_evaluation))
     print()
@@ -78,16 +78,16 @@ def main() -> None:
     print()
     print(
         _format_comparison(
-            "Conservative vs Random",
-            conservative_evaluation,
+            "Convention vs Random",
+            convention_evaluation,
             random_evaluation,
         )
     )
     print()
     print(
         _format_comparison(
-            "Conservative vs Basic",
-            conservative_evaluation,
+            "Convention vs Basic",
+            convention_evaluation,
             basic_evaluation,
         )
     )
