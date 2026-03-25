@@ -30,6 +30,7 @@ class PublicBeliefState:
     remaining_card_counts: dict[Card, int]
     public_hand_knowledge_by_player: dict[int, tuple[CardKnowledge, ...]]
     card_distributions_by_player: dict[int, tuple[tuple[tuple[Card, float], ...], ...]]
+    card_distributions_by_knowledge: dict[CardKnowledge, tuple[tuple[Card, float], ...]]
 
     @classmethod
     def from_observation(cls, observation: PlayerObservation) -> PublicBeliefState:
@@ -50,12 +51,26 @@ class PublicBeliefState:
             )
             for player_id, hand_knowledge in public_hand_knowledge_by_player.items()
         }
+        card_distributions_by_knowledge = {
+            knowledge: distribution
+            for hand_knowledge, hand_distributions in zip(
+                public_hand_knowledge_by_player.values(),
+                card_distributions_by_player.values(),
+                strict=True,
+            )
+            for knowledge, distribution in zip(
+                hand_knowledge,
+                hand_distributions,
+                strict=True,
+            )
+        }
 
         return cls(
             observation=observation,
             remaining_card_counts=remaining_card_counts,
             public_hand_knowledge_by_player=public_hand_knowledge_by_player,
             card_distributions_by_player=card_distributions_by_player,
+            card_distributions_by_knowledge=card_distributions_by_knowledge,
         )
 
     def knowledge_for_player(self, player_id: int) -> tuple[CardKnowledge, ...]:
@@ -106,19 +121,7 @@ class PublicBeliefState:
     def distribution_for_knowledge(
         self, knowledge: CardKnowledge
     ) -> tuple[tuple[Card, float], ...]:
-        for hand_knowledge, hand_distributions in zip(
-            self.public_hand_knowledge_by_player.values(),
-            self.card_distributions_by_player.values(),
-            strict=True,
-        ):
-            for known_card, distribution in zip(
-                hand_knowledge,
-                hand_distributions,
-                strict=True,
-            ):
-                if known_card == knowledge:
-                    return distribution
-        return ()
+        return self.card_distributions_by_knowledge.get(knowledge, ())
 
     def expected_value_for_knowledge(
         self,

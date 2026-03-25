@@ -7,10 +7,14 @@ from hanabi_ai.game.actions import DiscardAction, HintColorAction, HintRankActio
 from hanabi_ai.game.cards import Card, Color, Rank
 from hanabi_ai.game.engine import HanabiGameEngine
 from hanabi_ai.game.observation import CardKnowledge, ObservedHand, PlayerObservation
-from ._shared import SharedHeuristicAgentTests
+from ._shared import SharedBasicHeuristicVariantTests, SharedHeuristicAgentTests
 
 
-class TempoHeuristicAgentTests(SharedHeuristicAgentTests, unittest.TestCase):
+class TempoHeuristicAgentTests(
+    SharedBasicHeuristicVariantTests,
+    SharedHeuristicAgentTests,
+    unittest.TestCase,
+):
     def make_agent(self):
         return TempoHeuristicAgent()
 

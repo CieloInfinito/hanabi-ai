@@ -25,8 +25,6 @@ class BasicHeuristicAgent(BaseHeuristicAgent):
     - Rank hints are not interpreted or emitted with playability-based grouping.
     """
 
-    pass
-
 
 if __name__ == "__main__":
     raise SystemExit(
