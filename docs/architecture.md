@@ -106,6 +106,16 @@ Builds the partial view for one player and tracks hidden-hand knowledge:
 - Legal actions are included for the active player
 - Safe-play helpers can detect own-hand indices that are guaranteed playable
   from current knowledge alone
+- Public-card counting helpers can estimate how many unseen copies of each
+  card identity still remain compatible with the observer's hand
+
+This module is still intentionally observation-side only: it does not leak
+hidden cards from the engine, but it does derive stronger public-information
+features from visible hands, discards, and fireworks.
+
+The current heuristic layer builds on top of these features to estimate card
+distributions, discard risk, and whether a hint would likely create an
+immediately safe follow-up action for the receiving player.
 
 ### `game/engine.py`
 
@@ -132,6 +142,14 @@ The engine currently supports:
 
 Runs full games between agents and exposes compact summaries and aggregate
 evaluation helpers.
+
+The current heuristic stack uses this layer mainly for regression-style
+comparison between agent variants while the observation and policy models are
+still evolving.
+
+That evaluation role matters because heuristic changes are increasingly about
+decision quality, not just legality, so the project uses repeated self-play as
+the main guardrail for policy iteration.
 
 ### `visualization/cli.py`
 

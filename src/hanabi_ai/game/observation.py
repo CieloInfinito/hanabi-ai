@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 
 from .actions import Action
-from .cards import HANABI_COLORS, HANABI_RANKS, Card, Color, Rank
+from .cards import CARD_COUNTS_BY_RANK, HANABI_COLORS, HANABI_RANKS, Card, Color, Rank
 from .rules import Fireworks
 
 
@@ -43,6 +44,83 @@ class PlayerObservation:
     deck_size: int
     public_history: tuple[PublicTurnRecord, ...]
     legal_actions: tuple[Action, ...]
+
+
+def build_visible_card_counts(observation: PlayerObservation) -> Counter[Card]:
+    """
+    Count public cards that are no longer candidates for the observer's hidden hand.
+
+    This includes discarded cards, all visible teammate hands, and cards already
+    committed to the fireworks stacks.
+    """
+    counts: Counter[Card] = Counter()
+
+    for discarded_card in observation.discard_pile:
+        counts[discarded_card] += 1
+
+    for observed_hand in observation.other_player_hands:
+        for card in observed_hand.cards:
+            counts[card] += 1
+
+    for color, highest_rank in observation.fireworks.items():
+        for rank_value in range(1, highest_rank + 1):
+            counts[Card(color=color, rank=Rank(rank_value))] += 1
+
+    return counts
+
+
+def build_remaining_card_counts(observation: PlayerObservation) -> dict[Card, int]:
+    """
+    Return the number of unseen copies still compatible with the observer's hand.
+    """
+    visible_counts = build_visible_card_counts(observation)
+    remaining_counts: dict[Card, int] = {}
+
+    for color in HANABI_COLORS:
+        for rank in HANABI_RANKS:
+            card = Card(color=color, rank=rank)
+            remaining_counts[card] = (
+                CARD_COUNTS_BY_RANK[rank] - visible_counts[card]
+            )
+
+    return remaining_counts
+
+
+def estimate_card_distribution(
+    knowledge: CardKnowledge,
+    observation: PlayerObservation,
+) -> tuple[tuple[Card, float], ...]:
+    """
+    Estimate a hidden card distribution using remaining public copy counts.
+
+    Candidate cards with more unseen copies receive proportionally more weight.
+    If all compatible cards are exhausted by public information, the function
+    falls back to a uniform distribution over the raw knowledge state so callers
+    still receive a usable conservative estimate.
+    """
+    possible_cards = tuple(
+        Card(color=color, rank=rank)
+        for color in knowledge.possible_colors
+        for rank in knowledge.possible_ranks
+    )
+    if not possible_cards:
+        return ()
+
+    remaining_counts = build_remaining_card_counts(observation)
+    weighted_candidates = [
+        (card, remaining_counts[card])
+        for card in possible_cards
+        if remaining_counts[card] > 0
+    ]
+
+    if weighted_candidates:
+        total_weight = sum(weight for _, weight in weighted_candidates)
+        return tuple(
+            (card, weight / total_weight) for card, weight in weighted_candidates
+        )
+
+    fallback_probability = 1.0 / len(possible_cards)
+    return tuple((card, fallback_probability) for card in possible_cards)
 
 
 def get_definitely_playable_card_indices(

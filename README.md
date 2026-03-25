@@ -16,6 +16,8 @@ The repository already includes a first working vertical slice:
 - A playable game engine with turn progression
 - Partial observation building with hidden own-hand cards
 - Baseline random and heuristic agents
+- Observation-side inference based on remaining public card copies
+- Heuristic policies that score discard risk and hint actionability
 - Self-play evaluation utilities
 - Automated tests for core behavior
 
@@ -119,7 +121,9 @@ print(traced_game.trace)
 
 Planned next milestones:
 
-- Improve observation-side card knowledge modeling
+- Continue improving observation-side card knowledge modeling
+- Turn the newer risk-aware heuristic ideas into stronger play and hint policies
+- Keep tightening evaluation around policy quality, not just engine correctness
 - Add more engine and edge-case tests
 - Build training utilities on top of self-play
 - Introduce RL agents once the environment is stable

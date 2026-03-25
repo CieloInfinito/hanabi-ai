@@ -5,7 +5,15 @@ from dataclasses import dataclass
 from typing import Callable, Protocol
 
 from hanabi_ai.agents.heuristic.base import BaseHeuristicAgent
-from hanabi_ai.game.actions import Action, ActionLike, normalize_agent_decision
+from hanabi_ai.game.actions import (
+    Action,
+    ActionLike,
+    DiscardAction,
+    HintColorAction,
+    HintRankAction,
+    PlayAction,
+    normalize_agent_decision,
+)
 from hanabi_ai.game.cards import Color, Rank
 from hanabi_ai.game.engine import HanabiGameEngine
 from hanabi_ai.game.observation import PlayerObservation
@@ -26,6 +34,11 @@ class SelfPlayResult:
     strike_tokens: int
     deck_size: int
     completed_stacks: int
+    play_action_count: int
+    successful_play_count: int
+    failed_play_count: int
+    discard_action_count: int
+    hint_action_count: int
     game_won: bool
     game_lost: bool
 
@@ -48,6 +61,12 @@ class SelfPlayEvaluation:
     average_hint_tokens: float
     average_strike_tokens: float
     average_completed_stacks: float
+    average_play_actions: float
+    average_successful_plays: float
+    average_failed_plays: float
+    average_discards: float
+    average_hints_given: float
+    successful_play_rate: float
     win_rate: float
     loss_rate: float
     score_at_least_10_rate: float
@@ -79,12 +98,28 @@ def run_self_play_game(
         )
 
     engine = HanabiGameEngine(player_count=len(agents), seed=seed)
+    play_action_count = 0
+    successful_play_count = 0
+    failed_play_count = 0
+    discard_action_count = 0
+    hint_action_count = 0
 
     while not engine.is_terminal():
         player_id = engine.current_player
         observation = engine.get_observation(player_id)
         decision = normalize_agent_decision(agents[player_id].act(observation))
-        engine.step(decision)
+        step_result = engine.step(decision)
+
+        if isinstance(step_result.action, PlayAction):
+            play_action_count += 1
+            if step_result.play_succeeded:
+                successful_play_count += 1
+            else:
+                failed_play_count += 1
+        elif isinstance(step_result.action, DiscardAction):
+            discard_action_count += 1
+        elif isinstance(step_result.action, (HintColorAction, HintRankAction)):
+            hint_action_count += 1
 
     return SelfPlayResult(
         player_count=engine.player_count,
@@ -98,6 +133,11 @@ def run_self_play_game(
             for color in Color
             if engine.fireworks.get(color, 0) == int(Rank.FIVE)
         ),
+        play_action_count=play_action_count,
+        successful_play_count=successful_play_count,
+        failed_play_count=failed_play_count,
+        discard_action_count=discard_action_count,
+        hint_action_count=hint_action_count,
         game_won=engine.get_score() == 25,
         game_lost=engine.strike_tokens >= 3,
     )
@@ -139,6 +179,11 @@ def evaluate_self_play(
     hint_tokens: list[int] = []
     strike_tokens: list[int] = []
     completed_stacks: list[int] = []
+    play_action_counts: list[int] = []
+    successful_play_counts: list[int] = []
+    failed_play_counts: list[int] = []
+    discard_action_counts: list[int] = []
+    hint_action_counts: list[int] = []
     wins = 0
     losses = 0
 
@@ -153,6 +198,11 @@ def evaluate_self_play(
         hint_tokens.append(result.hint_tokens)
         strike_tokens.append(result.strike_tokens)
         completed_stacks.append(result.completed_stacks)
+        play_action_counts.append(result.play_action_count)
+        successful_play_counts.append(result.successful_play_count)
+        failed_play_counts.append(result.failed_play_count)
+        discard_action_counts.append(result.discard_action_count)
+        hint_action_counts.append(result.hint_action_count)
         wins += int(result.game_won)
         losses += int(result.game_lost)
 
@@ -164,6 +214,8 @@ def evaluate_self_play(
         else (sorted_scores[middle - 1] + sorted_scores[middle]) / 2
     )
     score_distribution = tuple(sorted(Counter(scores).items()))
+    total_play_actions = sum(play_action_counts)
+    total_successful_plays = sum(successful_play_counts)
 
     return SelfPlayEvaluation(
         game_count=game_count,
@@ -176,6 +228,14 @@ def evaluate_self_play(
         average_hint_tokens=sum(hint_tokens) / game_count,
         average_strike_tokens=sum(strike_tokens) / game_count,
         average_completed_stacks=sum(completed_stacks) / game_count,
+        average_play_actions=sum(play_action_counts) / game_count,
+        average_successful_plays=sum(successful_play_counts) / game_count,
+        average_failed_plays=sum(failed_play_counts) / game_count,
+        average_discards=sum(discard_action_counts) / game_count,
+        average_hints_given=sum(hint_action_counts) / game_count,
+        successful_play_rate=(
+            total_successful_plays / total_play_actions if total_play_actions else 0.0
+        ),
         win_rate=wins / game_count,
         loss_rate=losses / game_count,
         score_at_least_10_rate=sum(score >= 10 for score in scores) / game_count,
@@ -199,12 +259,27 @@ def run_self_play_game_with_trace(
 
     engine = HanabiGameEngine(player_count=len(agents), seed=seed)
     trace_blocks = ["=== Self-Play Start ===", render_game_state(engine)]
+    play_action_count = 0
+    successful_play_count = 0
+    failed_play_count = 0
+    discard_action_count = 0
+    hint_action_count = 0
 
     while not engine.is_terminal():
         player_id = engine.current_player
         observation = engine.get_observation(player_id)
         decision = normalize_agent_decision(agents[player_id].act(observation))
         step_result = engine.step(decision)
+        if isinstance(step_result.action, PlayAction):
+            play_action_count += 1
+            if step_result.play_succeeded:
+                successful_play_count += 1
+            else:
+                failed_play_count += 1
+        elif isinstance(step_result.action, DiscardAction):
+            discard_action_count += 1
+        elif isinstance(step_result.action, (HintColorAction, HintRankAction)):
+            hint_action_count += 1
         trace_blocks.append(
             render_self_play_turn(
                 turn_index=engine.turn_number,
@@ -233,6 +308,11 @@ def run_self_play_game_with_trace(
             for color in Color
             if engine.fireworks.get(color, 0) == int(Rank.FIVE)
         ),
+        play_action_count=play_action_count,
+        successful_play_count=successful_play_count,
+        failed_play_count=failed_play_count,
+        discard_action_count=discard_action_count,
+        hint_action_count=hint_action_count,
         game_won=engine.get_score() == 25,
         game_lost=engine.strike_tokens >= 3,
     )

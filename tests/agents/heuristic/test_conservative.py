@@ -24,7 +24,7 @@ class ConservativeHeuristicAgentTests(SharedHeuristicAgentTests, unittest.TestCa
 
     def test_conservative_heuristic_agent_gives_hint_for_other_players_playable_card_with_private_presentation(self) -> None:
         # Verifies that the conservative heuristic augments an otherwise shared
-        # color hint with its private presentation convention.
+        # rank hint with its private presentation convention.
         engine = HanabiGameEngine(player_count=2, seed=32)
         engine.hands[1] = [
             Card(Color.BLUE, Rank.ONE),
@@ -39,7 +39,7 @@ class ConservativeHeuristicAgentTests(SharedHeuristicAgentTests, unittest.TestCa
         decision = agent.act(observation)
 
         self.assertIsInstance(decision, AgentDecision)
-        self.assertEqual(decision.action, HintColorAction(target_player=1, color=Color.BLUE))
+        self.assertEqual(decision.action, HintRankAction(target_player=1, rank=Rank.ONE))
         self.assertEqual(
             decision.hint_presentation,
             HintPresentation(revealed_indices=(0,), revealed_groups=((0,),)),
@@ -165,9 +165,9 @@ class ConservativeHeuristicAgentTests(SharedHeuristicAgentTests, unittest.TestCa
             frozenset({Rank.TWO}),
         )
 
-    def test_conservative_heuristic_agent_emits_ascending_presentation_for_color_hints(self) -> None:
-        # Verifies that color hints are emitted with the agent's ascending-rank
-        # private presentation convention, preserving equal-rank ties in order.
+    def test_conservative_heuristic_agent_prefers_rank_hint_when_it_creates_safe_play(self) -> None:
+        # Verifies that the conservative heuristic may choose a rank hint when
+        # that more directly creates a safe play than a broader color hint.
         engine = HanabiGameEngine(player_count=2, seed=41)
         engine.hands[1] = [
             Card(Color.YELLOW, Rank.TWO),
@@ -184,13 +184,13 @@ class ConservativeHeuristicAgentTests(SharedHeuristicAgentTests, unittest.TestCa
         self.assertIsInstance(decision, AgentDecision)
         self.assertEqual(
             decision.action,
-            HintColorAction(target_player=1, color=Color.YELLOW),
+            HintRankAction(target_player=1, rank=Rank.ONE),
         )
         self.assertEqual(
             decision.hint_presentation,
             HintPresentation(
-                revealed_indices=(1, 0, 4, 3),
-                revealed_groups=((1,), (0,), (4,), (3,)),
+                revealed_indices=(1,),
+                revealed_groups=((1,),),
             ),
         )
 

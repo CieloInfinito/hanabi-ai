@@ -52,6 +52,21 @@ class SelfPlayTests(unittest.TestCase):
         self.assertLessEqual(result.final_score, 25)
         self.assertGreaterEqual(result.hint_tokens, 0)
         self.assertGreaterEqual(result.strike_tokens, 0)
+        self.assertGreaterEqual(result.play_action_count, 0)
+        self.assertGreaterEqual(result.successful_play_count, 0)
+        self.assertGreaterEqual(result.failed_play_count, 0)
+        self.assertGreaterEqual(result.discard_action_count, 0)
+        self.assertGreaterEqual(result.hint_action_count, 0)
+        self.assertEqual(
+            result.play_action_count,
+            result.successful_play_count + result.failed_play_count,
+        )
+        self.assertEqual(
+            result.turn_count,
+            result.play_action_count
+            + result.discard_action_count
+            + result.hint_action_count,
+        )
 
     def test_run_self_play_game_rejects_invalid_agent_count(self) -> None:
         # Verifies that self-play enforces the supported minimum player count.
@@ -100,6 +115,13 @@ class SelfPlayTests(unittest.TestCase):
         self.assertGreaterEqual(evaluation.average_hint_tokens, 0.0)
         self.assertGreaterEqual(evaluation.average_strike_tokens, 0.0)
         self.assertGreaterEqual(evaluation.average_completed_stacks, 0.0)
+        self.assertGreaterEqual(evaluation.average_play_actions, 0.0)
+        self.assertGreaterEqual(evaluation.average_successful_plays, 0.0)
+        self.assertGreaterEqual(evaluation.average_failed_plays, 0.0)
+        self.assertGreaterEqual(evaluation.average_discards, 0.0)
+        self.assertGreaterEqual(evaluation.average_hints_given, 0.0)
+        self.assertGreaterEqual(evaluation.successful_play_rate, 0.0)
+        self.assertLessEqual(evaluation.successful_play_rate, 1.0)
         self.assertGreaterEqual(evaluation.win_rate, 0.0)
         self.assertLessEqual(evaluation.win_rate, 1.0)
         self.assertGreaterEqual(evaluation.loss_rate, 0.0)

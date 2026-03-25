@@ -15,9 +15,9 @@ class BasicHeuristicAgentTests(SharedHeuristicAgentTests, unittest.TestCase):
     def make_agent(self):
         return BasicHeuristicAgent()
 
-    def test_basic_heuristic_agent_returns_plain_color_hint_without_private_presentation(self) -> None:
-        # Verifies that the basic heuristic keeps the same hint choice as the
-        # conservative variant but does not emit a private color-hint presentation.
+    def test_basic_heuristic_agent_returns_plain_rank_hint_without_private_presentation(self) -> None:
+        # Verifies that the basic heuristic can choose a rank hint when that
+        # more directly creates a safe play, and still returns a plain action.
         from hanabi_ai.game.engine import HanabiGameEngine
 
         engine = HanabiGameEngine(player_count=2, seed=51)
@@ -35,7 +35,7 @@ class BasicHeuristicAgentTests(SharedHeuristicAgentTests, unittest.TestCase):
 
         self.assertEqual(
             action,
-            HintColorAction(target_player=1, color=Color.YELLOW),
+            HintRankAction(target_player=1, rank=Rank.ONE),
         )
 
     def test_basic_heuristic_agent_returns_plain_rank_hint_without_private_presentation(self) -> None:
