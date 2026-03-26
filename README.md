@@ -21,6 +21,16 @@ The repository already includes a first working vertical slice:
 - Self-play evaluation utilities
 - Automated tests for core behavior
 
+Recent heuristic and evaluation progress:
+
+- Multi-table benchmarking with JSON export and report-to-report comparison
+- A dedicated `TempoHeuristicAgent` focused on hint economy
+- A `ConventionTempoHeuristicAgent` hybrid that combines private conventions
+  with tempo-aware hint spending
+- Shared hint-priority infrastructure across heuristic agents
+- Player-count-aware baseline weighting in `BasicHeuristicAgent`
+- Lightweight development notes for tracking strategy discoveries over time
+
 ## Setup
 
 ```powershell
@@ -57,11 +67,26 @@ Run the 2-player convention heuristic demo:
 hanabi-demo-convention
 ```
 
-Run a batched comparison between the basic heuristic, the convention
-heuristic, and the random baseline:
+Run a batched comparison between the heuristics and the random baseline:
 
 ```powershell
 hanabi-evaluate --players 2 --games 200
+```
+
+Run a broader benchmark across multiple table sizes and save a machine-readable
+report:
+
+```powershell
+hanabi-evaluate --players 2 3 4 5 --games 200 --json-output reports\benchmark.json
+```
+
+The benchmark includes the basic, convention, tempo, and convention-tempo
+hybrid heuristic agents.
+
+Compare a new run against a previous saved report:
+
+```powershell
+hanabi-evaluate --players 2 3 4 5 --games 200 --compare-json reports\benchmark_previous.json --json-output reports\benchmark_current.json
 ```
 
 Equivalent module form:
@@ -70,6 +95,8 @@ Equivalent module form:
 python -m hanabi_ai.tools.demo_basic_trace
 python -m hanabi_ai.tools.demo_convention_trace --game-seed 7
 python -m hanabi_ai.tools.evaluate_agents --players 2 --games 200
+python -m hanabi_ai.tools.evaluate_agents --players 2 3 4 5 --games 200 --json-output reports\benchmark.json
+python -m hanabi_ai.tools.evaluate_agents --players 2 3 4 5 --games 200 --compare-json reports\benchmark_previous.json --json-output reports\benchmark_current.json
 ```
 
 ## Examples
@@ -115,6 +142,7 @@ print(traced_game.trace)
 
 - [Architecture](docs/architecture.md)
 - [Heuristic Agents](docs/heuristic_agents.md)
+- [Agent Notes](docs/agent_notes.md)
 - [Testing](docs/testing.md)
 
 ## Next Steps
@@ -122,7 +150,8 @@ print(traced_game.trace)
 Planned next milestones:
 
 - Continue improving observation-side card knowledge modeling
-- Turn the newer risk-aware heuristic ideas into stronger play and hint policies
+- Turn the newer risk-aware and player-count-aware heuristic ideas into
+  stronger play and hint policies
 - Keep tightening evaluation around policy quality, not just engine correctness
 - Add more engine and edge-case tests
 - Build training utilities on top of self-play

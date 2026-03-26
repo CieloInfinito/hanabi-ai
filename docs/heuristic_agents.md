@@ -8,6 +8,7 @@ The project currently includes three baseline agents:
 - `BasicHeuristicAgent`
 - `ConventionHeuristicAgent`
 - `TempoHeuristicAgent`
+- `ConventionTempoHeuristicAgent`
 
 The heuristic agents use only partial observations and public information.
 
@@ -26,6 +27,18 @@ Internally, the heuristic implementation is now split so that:
 - `_scoring.py` defines common score aliases and utility helpers
 - `_convention_mixin.py` isolates the private convention logic used only by
   `ConventionHeuristicAgent`
+
+Recent architecture direction:
+
+- `BaseHeuristicAgent` owns the shared hint-priority pipeline and common action
+  ordering
+- `BasicHeuristicAgent` owns the baseline player-count-specific hint weights
+- `ConventionHeuristicAgent` layers private communication on top of that basic
+  baseline
+- `TempoHeuristicAgent` keeps the basic baseline weights intact and only adds
+  its own tactical hint-economy adjustments
+- `ConventionTempoHeuristicAgent` combines convention-aware communication with
+  tempo-aware spending rules
 
 ## `RandomAgent`
 
@@ -64,6 +77,12 @@ This powers two practical ideas:
 - Discards use approximate expected risk rather than only set-based rules
 - The agent protects critical cards, meaning cards whose loss would remove the
   last remaining live copy needed to finish some future play
+
+The basic baseline now also includes soft player-count-aware weighting in hint
+selection. The principles stay the same across formats, but their relative
+importance shifts with the table size. In practice that means larger tables can
+care more about turn distance, near-term receivers, and visible follow-on play
+value without turning those ideas into hard rules.
 
 Hint scoring also now prefers signals that are immediately actionable and, when
 possible, less noisy. In practice this means the baseline balances:
@@ -113,6 +132,27 @@ In practice this means:
 
 This makes it a good comparison point when testing whether a stronger
 short-horizon tempo policy beats a more information-friendly baseline.
+
+The current design intentionally keeps tempo-specific behavior separate from
+the baseline player-count weights. That separation makes it easier to tune the
+shared heuristic profile in `BasicHeuristicAgent` without accidentally baking
+tempo policy decisions into every other agent.
+
+## `ConventionTempoHeuristicAgent`
+
+Defined in `src/hanabi_ai/agents/heuristic/convention_tempo.py`.
+
+This hybrid variant combines the two ideas above:
+
+- it uses the private hint-ordering conventions from `ConventionHeuristicAgent`
+- it uses the hint-economy policy from `TempoHeuristicAgent`
+
+In practice, this makes it the natural experiment for checking whether better
+private communication and stricter hint spending are complementary or whether
+one suppresses the other.
+
+So far, this hybrid has generally been the strongest aggregate heuristic in
+short benchmark runs across 2-5 player tables.
 
 ## Visualization Support
 

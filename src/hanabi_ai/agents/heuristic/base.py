@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from hanabi_ai.agents.heuristic._mixins import _HeuristicScoringMixin
 from hanabi_ai.agents.heuristic._scoring import HintScore
 from hanabi_ai.game.actions import (
@@ -10,12 +12,25 @@ from hanabi_ai.game.actions import (
     HintRankAction,
     PlayAction,
 )
+from hanabi_ai.game.cards import Card, Color
 from hanabi_ai.game.observation import (
     CardKnowledge,
+    ObservedHand,
     PlayerObservation,
     PublicTurnRecord,
 )
 from hanabi_ai.game.rules import is_card_playable
+
+
+@dataclass(frozen=True, slots=True)
+class _HintPriorityWeights:
+    follow_on_value: int = 0
+    receiver_needs_help: int = 0
+    immediate_receiver: int = 0
+    near_term_receiver: int = 0
+    actionable_hint: int = 0
+    critical_playable: int = 0
+    turn_distance_penalty: int = 0
 
 
 class BaseHeuristicAgent(_HeuristicScoringMixin):
@@ -154,15 +169,23 @@ class BaseHeuristicAgent(_HeuristicScoringMixin):
 
         best_hint: HintColorAction | HintRankAction | None = None
         best_score: HintScore | None = None
+        best_priority = None
 
         for observed_hand in observation.other_player_hands:
             candidate_hints = self._build_candidate_hints(
                 observed_hand, legal_hints, observation
             )
             for hint_action, score in candidate_hints:
-                if best_score is None or score > best_score:
+                priority = self._hint_priority(
+                    observation,
+                    observed_hand,
+                    hint_action,
+                    score,
+                )
+                if best_priority is None or priority > best_priority:
                     best_hint = hint_action
                     best_score = score
+                    best_priority = priority
 
         return best_hint, best_score
 
@@ -271,3 +294,183 @@ class BaseHeuristicAgent(_HeuristicScoringMixin):
         if observation.strike_tokens == 1:
             return 0.90
         return 0.75
+
+    def _hint_priority(
+        self,
+        observation: PlayerObservation,
+        observed_hand: ObservedHand,
+        hint_action: HintColorAction | HintRankAction,
+        score: HintScore,
+    ) -> tuple[HintScore, int, int, int, int, int, int, int]:
+        player_count = len(observation.other_player_hands) + 1
+        turn_distance = self._turn_distance(
+            observation.current_player,
+            observed_hand.player_id,
+            player_count,
+        )
+        guaranteed_play_hits = score[0]
+        playable_hits = score[1]
+        critical_playable_hits = score[4]
+        receiver_needs_help = self._receiver_needs_help(
+            observation,
+            observed_hand.player_id,
+        )
+        follow_on_value = self._follow_on_play_value(
+            observation,
+            observed_hand.player_id,
+            hint_action,
+        )
+        immediate_receiver_bonus = int(turn_distance == 1 and playable_hits >= 1)
+        near_term_receiver_bonus = int(turn_distance <= 2 and guaranteed_play_hits >= 1)
+        actionable_hint_bonus = int(playable_hits >= 1 or guaranteed_play_hits >= 1)
+        weighted_bonus = self._base_hint_priority_bonus(
+            player_count=player_count,
+            follow_on_value=follow_on_value,
+            receiver_needs_help=receiver_needs_help,
+            immediate_receiver_bonus=immediate_receiver_bonus,
+            near_term_receiver_bonus=near_term_receiver_bonus,
+            actionable_hint_bonus=actionable_hint_bonus,
+            critical_playable_hits=critical_playable_hits,
+            turn_distance=turn_distance,
+        ) + self._hint_priority_adjustment(
+            observation=observation,
+            observed_hand=observed_hand,
+            hint_action=hint_action,
+            score=score,
+            follow_on_value=follow_on_value,
+            receiver_needs_help=receiver_needs_help,
+            immediate_receiver_bonus=immediate_receiver_bonus,
+            near_term_receiver_bonus=near_term_receiver_bonus,
+            actionable_hint_bonus=actionable_hint_bonus,
+            critical_playable_hits=critical_playable_hits,
+            turn_distance=turn_distance,
+        )
+
+        return (
+            score,
+            weighted_bonus,
+            follow_on_value,
+            int(receiver_needs_help),
+            immediate_receiver_bonus,
+            near_term_receiver_bonus,
+            actionable_hint_bonus,
+            critical_playable_hits,
+        )
+
+    def _base_hint_priority_weights(self, player_count: int) -> _HintPriorityWeights:
+        return _HintPriorityWeights()
+
+    def _base_hint_priority_bonus(
+        self,
+        *,
+        player_count: int,
+        follow_on_value: int,
+        receiver_needs_help: bool,
+        immediate_receiver_bonus: int,
+        near_term_receiver_bonus: int,
+        actionable_hint_bonus: int,
+        critical_playable_hits: int,
+        turn_distance: int,
+    ) -> int:
+        weights = self._base_hint_priority_weights(player_count)
+        return (
+            weights.follow_on_value * follow_on_value
+            + weights.receiver_needs_help * int(receiver_needs_help)
+            + weights.immediate_receiver * immediate_receiver_bonus
+            + weights.near_term_receiver * near_term_receiver_bonus
+            + weights.actionable_hint * actionable_hint_bonus
+            + weights.critical_playable * critical_playable_hits
+            - weights.turn_distance_penalty * turn_distance
+        )
+
+    def _hint_priority_adjustment(
+        self,
+        *,
+        observation: PlayerObservation,
+        observed_hand: ObservedHand,
+        hint_action: HintColorAction | HintRankAction,
+        score: HintScore,
+        follow_on_value: int,
+        receiver_needs_help: bool,
+        immediate_receiver_bonus: int,
+        near_term_receiver_bonus: int,
+        actionable_hint_bonus: int,
+        critical_playable_hits: int,
+        turn_distance: int,
+    ) -> int:
+        return 0
+
+    def _turn_distance(
+        self,
+        current_player: int,
+        target_player: int,
+        player_count: int,
+    ) -> int:
+        return (target_player - current_player) % player_count
+
+    def _receiver_needs_help(
+        self,
+        observation: PlayerObservation,
+        player_id: int,
+    ) -> bool:
+        belief_state = self._belief_state(observation)
+        knowledge = belief_state.knowledge_for_player(player_id)
+        if belief_state.guaranteed_play_indices_for_knowledge(knowledge):
+            return False
+
+        known_attribute_count = sum(
+            int(card_knowledge.hinted_color is not None)
+            + int(card_knowledge.hinted_rank is not None)
+            for card_knowledge in knowledge
+        )
+        return known_attribute_count <= 1
+
+    def _follow_on_play_value(
+        self,
+        observation: PlayerObservation,
+        target_player: int,
+        hint_action: HintColorAction | HintRankAction,
+    ) -> int:
+        target_hand = next(
+            (
+                hand
+                for hand in observation.other_player_hands
+                if hand.player_id == target_player
+            ),
+            None,
+        )
+        if target_hand is None:
+            return 0
+
+        touched_playable_cards = [
+            card
+            for card in target_hand.cards
+            if self._hint_touches_card(card, hint_action)
+            and self._card_is_playable_now(card, observation)
+        ]
+        if not touched_playable_cards:
+            return 0
+
+        unlocked_cards: set[tuple[Color, int]] = set()
+        for card in touched_playable_cards:
+            next_rank = int(card.rank) + 1
+            for observed_hand in observation.other_player_hands:
+                if observed_hand.player_id == target_player:
+                    continue
+                for visible_card in observed_hand.cards:
+                    if (
+                        visible_card.color == card.color
+                        and int(visible_card.rank) == next_rank
+                    ):
+                        unlocked_cards.add((visible_card.color, int(visible_card.rank)))
+
+        return len(unlocked_cards)
+
+    def _hint_touches_card(
+        self,
+        card: Card,
+        hint_action: HintColorAction | HintRankAction,
+    ) -> bool:
+        if isinstance(hint_action, HintColorAction):
+            return card.color == hint_action.color
+        return card.rank == hint_action.rank

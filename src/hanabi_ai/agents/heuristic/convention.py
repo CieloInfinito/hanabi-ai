@@ -9,10 +9,10 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ""):
         sys.path.insert(0, str(SRC_PATH))
 
 from hanabi_ai.agents.heuristic._convention_mixin import _ConventionHeuristicMixin
-from hanabi_ai.agents.heuristic.base import BaseHeuristicAgent
+from hanabi_ai.agents.heuristic.basic import BasicHeuristicAgent
 
 
-class ConventionHeuristicAgent(_ConventionHeuristicMixin, BaseHeuristicAgent):
+class ConventionHeuristicAgent(_ConventionHeuristicMixin, BasicHeuristicAgent):
     """
     Convention-aware Hanabi heuristic using only partial observations.
 

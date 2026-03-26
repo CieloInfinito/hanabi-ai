@@ -8,7 +8,7 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ""):
     if str(SRC_PATH) not in sys.path:
         sys.path.insert(0, str(SRC_PATH))
 
-from hanabi_ai.agents.heuristic.base import BaseHeuristicAgent
+from hanabi_ai.agents.heuristic.base import BaseHeuristicAgent, _HintPriorityWeights
 
 
 class BasicHeuristicAgent(BaseHeuristicAgent):
@@ -24,6 +24,40 @@ class BasicHeuristicAgent(BaseHeuristicAgent):
     - Color hints are not interpreted or emitted with ascending-rank ordering.
     - Rank hints are not interpreted or emitted with playability-based grouping.
     """
+
+    def _base_hint_priority_weights(self, player_count: int) -> _HintPriorityWeights:
+        if player_count <= 2:
+            return _HintPriorityWeights(
+                actionable_hint=1,
+                critical_playable=1,
+            )
+        if player_count == 3:
+            return _HintPriorityWeights(
+                receiver_needs_help=1,
+                immediate_receiver=1,
+                near_term_receiver=1,
+                actionable_hint=1,
+                critical_playable=1,
+            )
+        if player_count == 4:
+            return _HintPriorityWeights(
+                follow_on_value=1,
+                receiver_needs_help=1,
+                immediate_receiver=2,
+                near_term_receiver=1,
+                actionable_hint=1,
+                critical_playable=1,
+                turn_distance_penalty=1,
+            )
+        return _HintPriorityWeights(
+            follow_on_value=2,
+            receiver_needs_help=1,
+            immediate_receiver=1,
+            near_term_receiver=2,
+            actionable_hint=1,
+            critical_playable=1,
+            turn_distance_penalty=1,
+        )
 
 
 if __name__ == "__main__":
