@@ -61,6 +61,17 @@ class PlayerObservation:
     legal_actions: tuple[Action, ...]
 
 
+def possible_cards_from_knowledge(knowledge: CardKnowledge) -> tuple[Card, ...]:
+    """
+    Enumerate every card identity still compatible with one knowledge state.
+    """
+    return tuple(
+        Card(color=color, rank=rank)
+        for color in knowledge.possible_colors
+        for rank in knowledge.possible_ranks
+    )
+
+
 def build_visible_card_counts(observation: PlayerObservation) -> Counter[Card]:
     """
     Count public cards that are no longer candidates for the observer's hidden hand.
@@ -113,11 +124,7 @@ def estimate_card_distribution(
     falls back to a uniform distribution over the raw knowledge state so callers
     still receive a usable conservative estimate.
     """
-    possible_cards = tuple(
-        Card(color=color, rank=rank)
-        for color in knowledge.possible_colors
-        for rank in knowledge.possible_ranks
-    )
+    possible_cards = possible_cards_from_knowledge(knowledge)
     if not possible_cards:
         return ()
 
@@ -180,29 +187,10 @@ def apply_color_hint_to_knowledge(
     """
     Apply a color hint to one player's hidden hand knowledge.
     """
-    updated_knowledge: list[CardKnowledge] = []
-
-    for knowledge_item, card in zip(knowledge, hand, strict=True):
-        if card.color == color:
-            updated_knowledge.append(
-                CardKnowledge(
-                    possible_colors=frozenset({color}),
-                    possible_ranks=knowledge_item.possible_ranks,
-                    hinted_color=color,
-                    hinted_rank=knowledge_item.hinted_rank,
-                )
-            )
-        else:
-            updated_knowledge.append(
-                CardKnowledge(
-                    possible_colors=knowledge_item.possible_colors.difference({color}),
-                    possible_ranks=knowledge_item.possible_ranks,
-                    hinted_color=knowledge_item.hinted_color,
-                    hinted_rank=knowledge_item.hinted_rank,
-                )
-            )
-
-    return updated_knowledge
+    return [
+        _knowledge_after_color_hint(knowledge_item, color, matched=(card.color == color))
+        for knowledge_item, card in zip(knowledge, hand, strict=True)
+    ]
 
 
 def apply_rank_hint_to_knowledge(
@@ -211,29 +199,10 @@ def apply_rank_hint_to_knowledge(
     """
     Apply a rank hint to one player's hidden hand knowledge.
     """
-    updated_knowledge: list[CardKnowledge] = []
-
-    for knowledge_item, card in zip(knowledge, hand, strict=True):
-        if card.rank == rank:
-            updated_knowledge.append(
-                CardKnowledge(
-                    possible_colors=knowledge_item.possible_colors,
-                    possible_ranks=frozenset({rank}),
-                    hinted_color=knowledge_item.hinted_color,
-                    hinted_rank=rank,
-                )
-            )
-        else:
-            updated_knowledge.append(
-                CardKnowledge(
-                    possible_colors=knowledge_item.possible_colors,
-                    possible_ranks=knowledge_item.possible_ranks.difference({rank}),
-                    hinted_color=knowledge_item.hinted_color,
-                    hinted_rank=knowledge_item.hinted_rank,
-                )
-            )
-
-    return updated_knowledge
+    return [
+        _knowledge_after_rank_hint(knowledge_item, rank, matched=(card.rank == rank))
+        for knowledge_item, card in zip(knowledge, hand, strict=True)
+    ]
 
 
 def apply_color_hint_to_public_knowledge(
@@ -245,29 +214,14 @@ def apply_color_hint_to_public_knowledge(
     Apply a public color hint update using only revealed indices.
     """
     revealed_index_set = set(revealed_indices)
-    updated_knowledge: list[CardKnowledge] = []
-
-    for index, knowledge_item in enumerate(knowledge):
-        if index in revealed_index_set:
-            updated_knowledge.append(
-                CardKnowledge(
-                    possible_colors=frozenset({color}),
-                    possible_ranks=knowledge_item.possible_ranks,
-                    hinted_color=color,
-                    hinted_rank=knowledge_item.hinted_rank,
-                )
-            )
-        else:
-            updated_knowledge.append(
-                CardKnowledge(
-                    possible_colors=knowledge_item.possible_colors.difference({color}),
-                    possible_ranks=knowledge_item.possible_ranks,
-                    hinted_color=knowledge_item.hinted_color,
-                    hinted_rank=knowledge_item.hinted_rank,
-                )
-            )
-
-    return updated_knowledge
+    return [
+        _knowledge_after_color_hint(
+            knowledge_item,
+            color,
+            matched=(index in revealed_index_set),
+        )
+        for index, knowledge_item in enumerate(knowledge)
+    ]
 
 
 def apply_rank_hint_to_public_knowledge(
@@ -279,29 +233,14 @@ def apply_rank_hint_to_public_knowledge(
     Apply a public rank hint update using only revealed indices.
     """
     revealed_index_set = set(revealed_indices)
-    updated_knowledge: list[CardKnowledge] = []
-
-    for index, knowledge_item in enumerate(knowledge):
-        if index in revealed_index_set:
-            updated_knowledge.append(
-                CardKnowledge(
-                    possible_colors=knowledge_item.possible_colors,
-                    possible_ranks=frozenset({rank}),
-                    hinted_color=knowledge_item.hinted_color,
-                    hinted_rank=rank,
-                )
-            )
-        else:
-            updated_knowledge.append(
-                CardKnowledge(
-                    possible_colors=knowledge_item.possible_colors,
-                    possible_ranks=knowledge_item.possible_ranks.difference({rank}),
-                    hinted_color=knowledge_item.hinted_color,
-                    hinted_rank=knowledge_item.hinted_rank,
-                )
-            )
-
-    return updated_knowledge
+    return [
+        _knowledge_after_rank_hint(
+            knowledge_item,
+            rank,
+            matched=(index in revealed_index_set),
+        )
+        for index, knowledge_item in enumerate(knowledge)
+    ]
 
 
 def reconstruct_public_hand_knowledge(
@@ -311,8 +250,9 @@ def reconstruct_public_hand_knowledge(
     """
     Reconstruct one player's public hand knowledge from the visible turn history.
     """
-    player_count = len(observation.other_player_hands) + 1
-    knowledge = create_initial_hand_knowledge(hand_size_for_player_count(player_count))
+    knowledge = create_initial_hand_knowledge(
+        hand_size_for_player_count(len(observation.other_player_hands) + 1)
+    )
 
     for record in observation.public_history:
         action = record.action
@@ -340,17 +280,7 @@ def reconstruct_public_hand_knowledge(
             if record.drew_replacement:
                 knowledge.append(create_initial_card_knowledge())
 
-    target_hand_size = (
-        len(observation.hand_knowledge)
-        if target_player == observation.observing_player
-        else len(
-            next(
-                hand.cards
-                for hand in observation.other_player_hands
-                if hand.player_id == target_player
-            )
-        )
-    )
+    target_hand_size = _observed_hand_size(observation, target_player)
 
     if len(knowledge) != target_hand_size:
         knowledge = knowledge[:target_hand_size]
@@ -399,11 +329,7 @@ def build_player_observation(
 def _knowledge_is_definitely_playable(
     knowledge: CardKnowledge, fireworks: Fireworks
 ) -> bool:
-    possible_cards = [
-        Card(color=color, rank=rank)
-        for color in knowledge.possible_colors
-        for rank in knowledge.possible_ranks
-    ]
+    possible_cards = possible_cards_from_knowledge(knowledge)
 
     if not possible_cards:
         return False
@@ -414,3 +340,55 @@ def _knowledge_is_definitely_playable(
             return False
 
     return True
+
+
+def _knowledge_after_color_hint(
+    knowledge: CardKnowledge,
+    color: Color,
+    *,
+    matched: bool,
+) -> CardKnowledge:
+    return CardKnowledge(
+        possible_colors=(
+            frozenset({color})
+            if matched
+            else knowledge.possible_colors.difference({color})
+        ),
+        possible_ranks=knowledge.possible_ranks,
+        hinted_color=color if matched else knowledge.hinted_color,
+        hinted_rank=knowledge.hinted_rank,
+    )
+
+
+def _knowledge_after_rank_hint(
+    knowledge: CardKnowledge,
+    rank: Rank,
+    *,
+    matched: bool,
+) -> CardKnowledge:
+    return CardKnowledge(
+        possible_colors=knowledge.possible_colors,
+        possible_ranks=(
+            frozenset({rank})
+            if matched
+            else knowledge.possible_ranks.difference({rank})
+        ),
+        hinted_color=knowledge.hinted_color,
+        hinted_rank=rank if matched else knowledge.hinted_rank,
+    )
+
+
+def _observed_hand_size(
+    observation: PlayerObservation,
+    target_player: int,
+) -> int:
+    if target_player == observation.observing_player:
+        return len(observation.hand_knowledge)
+
+    return len(
+        next(
+            hand.cards
+            for hand in observation.other_player_hands
+            if hand.player_id == target_player
+        )
+    )

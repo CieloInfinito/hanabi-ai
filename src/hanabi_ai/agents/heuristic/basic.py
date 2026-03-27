@@ -16,19 +16,21 @@ from hanabi_ai.game.observation import ObservedHand, PlayerObservation
 
 class BasicHeuristicAgent(BaseHeuristicAgent):
     """
-    Basic rule-based Hanabi baseline using only partial observations.
+    Public-information heuristic baseline.
 
-    This agent keeps the same local play, hint, and discard priorities as the
-    convention heuristic baseline, but it does not use private hint
-    conventions when communicating or interpreting teammate hints.
+    This agent shares the same action-selection pipeline as the rest of the
+    heuristic family, but it does not use any private communication
+    conventions. It is the clean baseline for comparing:
 
-    In practice, the basic and convention heuristics differ only in these two
-    private communication rules:
-    - Color hints are not interpreted or emitted with ascending-rank ordering.
-    - Rank hints are not interpreted or emitted with playability-based grouping.
+    - public reasoning only
+    - private conventions layered on top
+    - tempo-specific hint-economy changes
     """
 
     def _base_hint_priority_weights(self, player_count: int) -> _HintPriorityWeights:
+        """
+        Adjust shared hint priorities by table size.
+        """
         if player_count <= 2:
             return _HintPriorityWeights(
                 actionable_hint=1,
@@ -62,6 +64,21 @@ class BasicHeuristicAgent(BaseHeuristicAgent):
             turn_distance_penalty=1,
         )
 
+    @staticmethod
+    def _pressure_relief_bonus(
+        guaranteed_play_hits: int,
+        playable_hits: int,
+        useful_hits: int,
+        information_gain: int,
+    ) -> int:
+        if guaranteed_play_hits >= 1:
+            return 3
+        if playable_hits >= 1 and information_gain >= 2:
+            return 2
+        if playable_hits >= 1 and useful_hits >= 1:
+            return 1
+        return 0
+
     def _hint_priority_adjustment(
         self,
         *,
@@ -93,16 +110,12 @@ class BasicHeuristicAgent(BaseHeuristicAgent):
         if not receiver_under_pressure or turn_distance > 2:
             return 0
 
-        if guaranteed_play_hits >= 1:
-            return 3
-
-        if playable_hits >= 1 and information_gain >= 2:
-            return 2
-
-        if playable_hits >= 1 and useful_hits >= 1:
-            return 1
-
-        return 0
+        return self._pressure_relief_bonus(
+            guaranteed_play_hits,
+            playable_hits,
+            useful_hits,
+            information_gain,
+        )
 
 
 if __name__ == "__main__":

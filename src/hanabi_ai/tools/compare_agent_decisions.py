@@ -25,7 +25,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--right-agent",
-        default="large-table",
+        default="convention",
         help="Right agent name: basic, convention, tempo, convention-tempo, large-table.",
     )
     parser.add_argument(

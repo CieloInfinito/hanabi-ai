@@ -1,41 +1,50 @@
 # Testing
 
-## Test Layout
+The test suite is organized the same way as the project:
 
-Tests are organized by domain:
+- `tests/game/`: engine, rules, and observations
+- `tests/agents/`: agents and heuristic behavior
+- `tests/training/`: self-play runners and summaries
+- `tests/tools/`: benchmark and comparison tooling
+- `tests/visualization/`: terminal rendering
 
-- `tests/game/test_engine.py` covers core engine transitions and observation building
-- `tests/agents/test_random.py` covers the random baseline agent
-- `tests/agents/heuristic/_shared.py` checks the baseline decision logic that every
-  heuristic agent in the family should satisfy
-- `tests/agents/heuristic/test_basic.py` checks that the basic heuristic does
-  not emit or interpret any private hint-ordering conventions
-- `tests/agents/heuristic/test_convention.py` checks that the convention
-  heuristic emits and interprets its private color-order and
-  rank-playability conventions
-- `tests/training/test_self_play.py` covers self-play execution and aggregate evaluation
-- `tests/visualization/test_cli.py` covers the text CLI renderers
+## What To Run Most Often
 
-## Running Tests
-
-Run the full suite with:
+Run the whole suite:
 
 ```powershell
 .venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
 ```
 
-Run a single module with:
+Run one module:
 
 ```powershell
-python -m unittest tests.game.test_engine
+.venv\Scripts\python.exe -m unittest tests.agents.heuristic.test_convention_tempo
 ```
 
-## Test Style
+Run a small group:
 
-Heuristic tests are split between shared and agent-specific responsibilities:
+```powershell
+.venv\Scripts\python.exe -m unittest `
+  tests.agents.heuristic.test_basic `
+  tests.agents.heuristic.test_tempo `
+  tests.agents.heuristic.test_convention_tempo
+```
 
-- shared tests validate behavior expected from any heuristic in the family
-- basic tests verify the absence of private conventions
-- convention tests verify the presence of the agreed private conventions
+## How The Heuristic Tests Are Split
 
-Each test includes a short comment describing exactly what it verifies.
+- shared tests check behavior expected from the whole heuristic family
+- agent-specific tests check only the extra behavior that variant adds
+
+That split matters because it keeps each test focused on one responsibility.
+
+## Practical Rule Of Thumb
+
+After changing policy code, the most useful loop is usually:
+
+1. run the relevant unit tests
+2. run a short benchmark
+3. inspect a few traces or decision comparisons
+
+Hanabi policy regressions are often visible in traces before they are obvious
+from average score alone.

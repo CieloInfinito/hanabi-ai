@@ -44,7 +44,13 @@ class BaseHeuristicAgent(_HeuristicScoringMixin):
 
     def act(self, observation: PlayerObservation) -> Action | AgentDecision:
         """
-        Choose an action using a small ordered set of Hanabi heuristics.
+        Choose an action with a fixed high-level order:
+
+        1. take a guaranteed safe play
+        2. consider the best cooperative hint
+        3. take a high-confidence forced play if discarding is unavailable
+        4. choose between discard and hint
+        5. fall back to any legal play
         """
         if not observation.legal_actions:
             raise ValueError(
@@ -58,9 +64,7 @@ class BaseHeuristicAgent(_HeuristicScoringMixin):
         if guaranteed_play is not None:
             return guaranteed_play
 
-        helpful_hint, helpful_hint_score = self._choose_hint_for_other_players(
-            observation
-        )
+        helpful_hint, helpful_hint_score = self._choose_hint_for_other_players(observation)
         confident_play = self._choose_confident_probabilistic_play(
             observation,
             best_hint_score=helpful_hint_score,
@@ -179,6 +183,9 @@ class BaseHeuristicAgent(_HeuristicScoringMixin):
     def _choose_definitely_playable_action(
         self, observation: PlayerObservation
     ) -> PlayAction | None:
+        """
+        Return the best own-hand play that is guaranteed safe from knowledge alone.
+        """
         legal_plays = {
             action.card_index: action
             for action in observation.legal_actions
@@ -205,6 +212,9 @@ class BaseHeuristicAgent(_HeuristicScoringMixin):
     def _choose_hint_for_other_players(
         self, observation: PlayerObservation
     ) -> tuple[HintColorAction | HintRankAction | None, HintScore | None]:
+        """
+        Return the highest-ranked legal hint and its raw hint score.
+        """
         ranked_hints = self._ranked_hint_candidates(observation)
         if not ranked_hints:
             return None, None
@@ -214,6 +224,9 @@ class BaseHeuristicAgent(_HeuristicScoringMixin):
     def _choose_discard_action(
         self, observation: PlayerObservation
     ) -> DiscardAction | None:
+        """
+        Return the safest legal discard according to discard scoring.
+        """
         discard_actions = [
             action
             for action in observation.legal_actions
@@ -239,6 +252,9 @@ class BaseHeuristicAgent(_HeuristicScoringMixin):
     def _choose_any_play_action(
         self, observation: PlayerObservation
     ) -> PlayAction | None:
+        """
+        Fallback play choice when no safer or more cooperative option exists.
+        """
         play_actions = [
             action for action in observation.legal_actions if isinstance(action, PlayAction)
         ]
@@ -263,6 +279,10 @@ class BaseHeuristicAgent(_HeuristicScoringMixin):
         *,
         best_hint_score: HintScore | None,
     ) -> PlayAction | None:
+        """
+        Take a risky play only when it is the only active option and confidence
+        is high enough.
+        """
         play_actions = [
             action
             for action in observation.legal_actions
@@ -308,9 +328,7 @@ class BaseHeuristicAgent(_HeuristicScoringMixin):
         return best_action
 
 
-    def _risky_play_probability_threshold(
-        self, observation: PlayerObservation
-    ) -> float:
+    def _risky_play_probability_threshold(self, observation: PlayerObservation) -> float:
         if observation.strike_tokens >= 2:
             return 1.01
         if observation.strike_tokens == 1:
@@ -324,6 +342,12 @@ class BaseHeuristicAgent(_HeuristicScoringMixin):
         hint_action: HintColorAction | HintRankAction,
         score: HintScore,
     ) -> tuple[HintScore, int, int, int, int, int, int, int]:
+        """
+        Build the ranking key for one hint.
+
+        The raw `score` captures what the hint touches. The extra fields capture
+        table-level context such as turn distance and follow-on value.
+        """
         player_count = len(observation.other_player_hands) + 1
         turn_distance = self._turn_distance(
             observation.current_player,
@@ -435,6 +459,9 @@ class BaseHeuristicAgent(_HeuristicScoringMixin):
         observation: PlayerObservation,
         player_id: int,
     ) -> bool:
+        """
+        Public approximation of whether a teammate lacks a clear next step.
+        """
         belief_state = self._belief_state(observation)
         knowledge = belief_state.knowledge_for_player(player_id)
         if belief_state.guaranteed_play_indices_for_knowledge(knowledge):
@@ -452,6 +479,9 @@ class BaseHeuristicAgent(_HeuristicScoringMixin):
         observation: PlayerObservation,
         player_id: int,
     ) -> bool:
+        """
+        Stronger version of `receiver_needs_help` that also checks discard risk.
+        """
         belief_state = self._belief_state(observation)
         knowledge = belief_state.knowledge_for_player(player_id)
         if belief_state.guaranteed_play_indices_for_knowledge(knowledge):
@@ -479,6 +509,10 @@ class BaseHeuristicAgent(_HeuristicScoringMixin):
         target_player: int,
         hint_action: HintColorAction | HintRankAction,
     ) -> int:
+        """
+        Count visible follow-on cards that would become live after the hinted
+        playable cards are played.
+        """
         target_hand = next(
             (
                 hand
@@ -533,6 +567,9 @@ class BaseHeuristicAgent(_HeuristicScoringMixin):
             tuple[HintScore, int, int, int, int, int, int, int],
         ]
     ]:
+        """
+        Enumerate and sort all legal hint candidates across all teammates.
+        """
         legal_hints = [
             action
             for action in observation.legal_actions

@@ -1,188 +1,115 @@
 # Heuristic Agents
 
-## Overview
+This project has one heuristic family with a few clear variants. The easiest
+way to read it is:
 
-The project currently includes three baseline agents:
+- `Basic` is the public-information baseline
+- `Convention` adds private communication conventions
+- `Tempo` changes hint spending behavior
+- `ConventionTempo` combines both ideas
+- `LargeTable` is currently a compatibility wrapper around the 5-player
+  `ConventionTempo` policy slot
 
-- `RandomAgent`
-- `BasicHeuristicAgent`
-- `ConventionHeuristicAgent`
-- `TempoHeuristicAgent`
-- `ConventionTempoHeuristicAgent`
-- `LargeTableHeuristicAgent`
+## Family Tree
 
-The heuristic agents use only partial observations and public information.
+```text
+BaseHeuristicAgent
+   |
+   +-- BasicHeuristicAgent
+   |      |
+   |      +-- ConventionHeuristicAgent
+   |      +-- TempoHeuristicAgent
+   |             |
+   |             +-- ConventionTempoHeuristicAgent
+   |                    |
+   |                    `-- LargeTableHeuristicAgent
+```
 
-The shared heuristic stack now sits on top of `PublicBeliefState`, which means
-the decision policy does not recompute every public inference from scratch in
-multiple places. Instead:
+## Shared Pieces
 
-- `PlayerObservation` supplies visible game facts
-- `PublicBeliefState` derives reusable public hand knowledge and card beliefs
-- heuristic agents focus on prioritizing actions
+All heuristic agents:
 
-Internally, the heuristic implementation is now split so that:
+- act only from `PlayerObservation`
+- use public-information inference from `PublicBeliefState`
+- try safe play first when they can prove it
+- otherwise compare hints and discards
+- avoid risky self-plays unless the fallback options are weak
 
-- `base.py` owns the top-level action policy
-- `_mixins.py` owns shared belief and scoring internals
-- `_scoring.py` defines common score aliases and utility helpers
-- `_convention_mixin.py` isolates the private convention logic used only by
-  `ConventionHeuristicAgent`
+Internal responsibilities are split like this:
 
-Recent architecture direction:
-
-- `BaseHeuristicAgent` owns the shared hint-priority pipeline and common action
-  ordering
-- `BasicHeuristicAgent` owns the baseline player-count-specific hint weights
-- `ConventionHeuristicAgent` layers private communication on top of that basic
-  baseline
-- `TempoHeuristicAgent` keeps the basic baseline weights intact and only adds
-  its own tactical hint-economy adjustments
-- `ConventionTempoHeuristicAgent` combines convention-aware communication with
-  tempo-aware spending rules
-- `LargeTableHeuristicAgent` keeps Tempo's core policy but adds extra large-table
-  weighting for near-term hints, stuck receivers, and visible follow-on chains
-
-## `RandomAgent`
-
-Defined in `src/hanabi_ai/agents/random.py`.
-
-This baseline samples uniformly from legal actions.
+- `base.py`: action-selection skeleton
+- `_mixins.py`: shared belief caching and helper logic
+- `_scoring.py`: hint score aliases and small helpers
+- `_convention_mixin.py`: convention-only behavior
 
 ## `BasicHeuristicAgent`
 
-Defined in `src/hanabi_ai/agents/heuristic/basic.py`.
+Use this as the baseline public-information policy.
 
-This is the shared rule-based baseline without any private hint-ordering
-conventions. It uses simple public deductions based on:
+It tries to:
 
-- Visible teammate hands
-- Current fireworks
-- Discarded cards
-- Remaining public copy counts for each card identity
+- play guaranteed safe cards
+- choose useful, actionable hints
+- discard the safest card when needed
+- protect critical cards when discard risk is high
 
-Shared priorities:
-
-- Play a card that is guaranteed playable from current knowledge
-- Otherwise, give the most useful legal hint to another player
-- Otherwise, choose the safest available discard
-- Avoid risky plays whenever a discard is legal
-- If forced to play, choose the own-hand card with the highest inferred
-  probability of being playable
-
-The current baseline is still intentionally lightweight, but it no longer
-treats every hidden-card possibility as equally likely. When a hidden card
-could match several identities, the agent weights those candidates by the
-number of unseen public copies still available.
-
-This powers two practical ideas:
-
-- Discards use approximate expected risk rather than only set-based rules
-- The agent protects critical cards, meaning cards whose loss would remove the
-  last remaining live copy needed to finish some future play
-
-The basic baseline now also includes soft player-count-aware weighting in hint
-selection. The principles stay the same across formats, but their relative
-importance shifts with the table size. In practice that means larger tables can
-care more about turn distance, near-term receivers, and visible follow-on play
-value without turning those ideas into hard rules.
-
-Hint scoring also now prefers signals that are immediately actionable and, when
-possible, less noisy. In practice this means the baseline balances:
-
-- hints that create a guaranteed safe play for the receiver
-- hints that expose playable cards right now
-- hints that reveal useful future information
-- hints that avoid mixing one urgent signal with too many extra touched cards
-
-When a risky self-play is the only active option left, the baseline can still
-take a high-confidence probabilistic play, but only under a stricter threshold
-that becomes more conservative as strike tokens increase.
+It also includes lightweight player-count-aware hint weighting, so 4-5 player
+tables can care more about turn distance and near-term coordination without
+turning those ideas into hard rules.
 
 ## `ConventionHeuristicAgent`
 
-Defined in `src/hanabi_ai/agents/heuristic/convention.py`.
+This is `Basic` plus private hint conventions.
 
-This variant keeps the same local priorities as the basic heuristic but adds
-two private communication conventions:
+Those conventions live in the agent layer, not the engine, so they can be
+tested and changed without redefining Hanabi itself.
 
-- Color hints are pointed in ascending rank order, so the receiver can also
-  infer when two or more hinted cards share a rank
-- Rank hints are grouped by immediate playability first, then non-playability
-
-These conventions intentionally live in the agent layer rather than the engine,
-so different bots can adopt different hidden signaling schemes.
-
-Aside from those extra conventions, the convention heuristic inherits the
-same remaining-copy weighting, critical-card protection, and risk-aware
-discard logic from the shared heuristic base, along with the same
-actionability-first hint scoring and bounded probabilistic self-play policy.
+Use this variant when you want to measure whether better communication helps
+more than stricter tempo policy.
 
 ## `TempoHeuristicAgent`
 
-Defined in `src/hanabi_ai/agents/heuristic/tempo.py`.
+This is `Basic` plus a stricter hint-economy policy.
 
-This experimental variant keeps the same public-inference stack as the basic
-heuristic, but changes one policy choice: when hint economy is low, it becomes
-less willing to spend the team's last hint token on a hint that does not create
-an immediate actionable play.
+Its main question is:
 
-In practice this means:
+- should we really spend this hint, or is it better to discard and recover
+  tempo?
 
-- if a hint creates a guaranteed safe play, tempo still spends the hint
-- if hint tokens are low and the best hint is mostly informational, tempo
-  prefers recovering the economy with a discard when legal
-
-This makes it a good comparison point when testing whether a stronger
-short-horizon tempo policy beats a more information-friendly baseline.
-
-The current design intentionally keeps tempo-specific behavior separate from
-the baseline player-count weights. That separation makes it easier to tune the
-shared heuristic profile in `BasicHeuristicAgent` without accidentally baking
-tempo policy decisions into every other agent.
+It is especially useful as a contrast agent in small tables, where short-horizon
+hint economy matters more clearly.
 
 ## `ConventionTempoHeuristicAgent`
 
-Defined in `src/hanabi_ai/agents/heuristic/convention_tempo.py`.
+This is the main hybrid and usually the strongest stable heuristic.
 
-This hybrid variant combines the two ideas above:
+It combines:
 
-- it uses the private hint-ordering conventions from `ConventionHeuristicAgent`
-- it uses the hint-economy policy from `TempoHeuristicAgent`
+- the private communication conventions from `Convention`
+- the hint-economy discipline from `Tempo`
+- a small 5-player adjustment for hints that preserve coordination
 
-In practice, this makes it the natural experiment for checking whether better
-private communication and stricter hint spending are complementary or whether
-one suppresses the other.
-
-So far, this hybrid has generally been the strongest aggregate heuristic in
-short benchmark runs across 2-5 player tables.
+If you want one heuristic agent to inspect first, start here.
 
 ## `LargeTableHeuristicAgent`
 
-Defined in `src/hanabi_ai/agents/heuristic/large_table.py`.
+Right now this is a thin compatibility wrapper around the current 5-player
+`ConventionTempo` behavior.
 
-This variant specializes the tempo policy for 5-player tables, where the turn
-cycle is long enough that distant informational hints decay in value faster.
+It remains in the repo for two reasons:
 
-In practice it:
+- it preserves a stable named benchmark slot
+- it gives the project a clean place to branch future 5-player experiments
 
-- gives more weight to actionable hints for the next one or two players
-- prioritizes helping publicly stuck receivers before they are forced into weak
-  discard turns
-- rewards visible follow-on chains more strongly
-- penalizes distant noisy hints that touch several non-playable cards
+## How To Read The Heuristics
 
-The goal is not to replace the shared heuristic family, but to give the
-benchmark suite a clean experimental branch for 5-player tuning without
-overfitting the rest of the formats.
+If the code feels dense, read it in this order:
 
-## Visualization Support
+1. `basic.py`
+2. `tempo.py`
+3. `convention.py`
+4. `convention_tempo.py`
+5. `base.py` only when you want the shared action-selection pipeline
 
-The CLI renderers can optionally display how advanced heuristic agents interpret
-public hint history according to their private conventions.
-
-This currently matters most for the convention heuristic, which can:
-
-- refine own-hand knowledge from color-hint ordering
-- refine own-hand knowledge from grouped rank hints
-- attach human-readable convention notes to traces
+That order matches the conceptual layering better than reading helper modules
+first.

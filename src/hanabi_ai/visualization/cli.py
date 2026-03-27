@@ -24,6 +24,62 @@ COLOR_SHORT_NAMES: dict[Color, str] = {
 }
 
 
+def _append_public_history(
+    lines: list[str],
+    observation: PlayerObservation,
+    *,
+    viewer_agent: BaseHeuristicAgent | None = None,
+) -> None:
+    if not observation.public_history:
+        return
+
+    last_record = observation.public_history[-1]
+    lines.append(
+        "Last public action: "
+        f"Player {last_record.player_id} -> {render_action(last_record.action)}"
+    )
+    if last_record.revealed_indices:
+        lines.append(f"Last revealed indices: {last_record.revealed_indices}")
+    if last_record.revealed_groups:
+        lines.append(
+            "Last revealed groups: "
+            f"{render_revealed_groups(last_record.revealed_groups)}"
+        )
+    if viewer_agent is not None:
+        for note in viewer_agent.describe_public_turn_record(last_record):
+            lines.append(f"Private interpretation: {note}")
+
+
+def _append_legal_actions(lines: list[str], observation: PlayerObservation) -> None:
+    if not observation.legal_actions:
+        return
+
+    lines.append("Legal actions:")
+    for index, action in enumerate(observation.legal_actions):
+        lines.append(f"  [{index}] {render_action(action)}")
+
+
+def _append_step_interpretation(
+    lines: list[str],
+    step_result: EngineStepResult,
+    *,
+    acting_agent: BaseHeuristicAgent | None = None,
+) -> None:
+    if acting_agent is None:
+        return
+
+    for note in acting_agent.describe_public_turn_record(
+        PublicTurnRecord(
+            player_id=step_result.acting_player,
+            action=step_result.action,
+            revealed_indices=step_result.revealed_indices,
+            revealed_groups=step_result.revealed_groups,
+            fireworks_before=step_result.fireworks_before,
+        )
+    ):
+        lines.append(f"  Private interpretation: {note}")
+
+
 def render_card(card: Card) -> str:
     """
     Render a real card in compact form.
@@ -184,28 +240,8 @@ def render_player_observation(
         "Definitely playable own indices: "
         + (str(definitely_playable) if definitely_playable else "-")
     )
-
-    if observation.public_history:
-        last_record = observation.public_history[-1]
-        lines.append(
-            "Last public action: "
-            f"Player {last_record.player_id} -> {render_action(last_record.action)}"
-        )
-        if last_record.revealed_indices:
-            lines.append(f"Last revealed indices: {last_record.revealed_indices}")
-        if last_record.revealed_groups:
-            lines.append(
-                "Last revealed groups: "
-                f"{render_revealed_groups(last_record.revealed_groups)}"
-            )
-        if viewer_agent is not None:
-            for note in viewer_agent.describe_public_turn_record(last_record):
-                lines.append(f"Private interpretation: {note}")
-
-    if observation.legal_actions:
-        lines.append("Legal actions:")
-        for index, action in enumerate(observation.legal_actions):
-            lines.append(f"  [{index}] {render_action(action)}")
+    _append_public_history(lines, observation, viewer_agent=viewer_agent)
+    _append_legal_actions(lines, observation)
 
     return "\n".join(lines)
 
@@ -235,17 +271,7 @@ def render_step_result(
         lines.append(
             f"  Revealed groups: {render_revealed_groups(step_result.revealed_groups)}"
         )
-    if acting_agent is not None:
-        for note in acting_agent.describe_public_turn_record(
-            PublicTurnRecord(
-                player_id=step_result.acting_player,
-                action=step_result.action,
-                revealed_indices=step_result.revealed_indices,
-                revealed_groups=step_result.revealed_groups,
-                fireworks_before=step_result.fireworks_before,
-            )
-        ):
-            lines.append(f"  Private interpretation: {note}")
+    _append_step_interpretation(lines, step_result, acting_agent=acting_agent)
     lines.append(f"  Drew replacement: {step_result.drew_replacement}")
     lines.append(f"  Game over: {step_result.game_over}")
     return "\n".join(lines)

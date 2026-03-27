@@ -1,199 +1,124 @@
 # Architecture
 
-## Project Principles
+This project is easiest to understand if you keep one rule in mind:
 
-This project treats Hanabi as an imperfect-information cooperative game. The
-most important architectural rule is to keep these three layers separate:
+- the engine knows everything
+- the observation knows only what one player may legally see
+- the agent acts only from that observation
 
-- Real game state: the omniscient state owned by the engine
-- Player observation: the partial information visible to one player
-- Agent logic: decision-making based only on the observation
+Everything else follows from that.
 
-If an agent can access hidden information, training and evaluation become
-invalid.
-
-## Source Layout
+## One Turn In The System
 
 ```text
-src/hanabi_ai/
-|- agents/
-|  |- beliefs.py
-|  |- heuristic/
-|  |  |- _convention_mixin.py
-|  |  |- _mixins.py
-|  |  |- _scoring.py
-|  |  |- base.py
-|  |  |- basic.py
-|  |  |- convention.py
-|  |  `- tempo.py
-|  `- random.py
-|- game/
-|  |- actions.py
-|  |- cards.py
-|  |- engine.py
-|  |- observation.py
-|  `- rules.py
-|- tools/
-|  |- demo_basic_trace.py
-|  |- demo_convention_trace.py
-|  `- evaluate_agents.py
-|- training/
-|  `- self_play.py
-`- visualization/
-   `- cli.py
-```
-
-## Architecture At A Glance
-
-```text
-engine (real game state)
+engine state
    |
    v
-observation builder (partial information)
+player observation
    |
    v
 agent.act(observation)
    |
    v
-action
+chosen action
    |
    v
 engine.step(action)
 ```
 
-## Core Modules
+If we ever blur those layers, Hanabi evaluation stops being trustworthy.
 
-### `game/cards.py`
+## Source Layout
 
-Defines:
+```text
+src/hanabi_ai/
+|- game/
+|- agents/
+|- training/
+|- tools/
+`- visualization/
+```
 
-- `Color`
-- `Rank`
-- `Card`
-- Standard Hanabi deck construction
-- Hand-size rules by player count
-- Game-wide constants such as max hint and strike tokens
+## What Each Folder Owns
 
-Hand sizes follow standard Hanabi rules:
+### `game/`
 
-- 2 or 3 players: 5-card hands
-- 4 or 5 players: 4-card hands
+The game layer is the source of truth for Hanabi itself.
 
-### `game/actions.py`
+- `cards.py`: card types, deck, hand sizes, shared constants
+- `actions.py`: typed actions such as play, discard, and hints
+- `rules.py`: pure rule helpers like playability and game-end checks
+- `observation.py`: legal player-visible views of the game state
+- `engine.py`: the omniscient game engine
 
-Defines explicit typed actions:
+This layer should know the rules of Hanabi, but not how a policy wants to
+play.
 
-- `PlayAction`
-- `DiscardAction`
-- `HintColorAction`
-- `HintRankAction`
+### `agents/`
 
-### `game/rules.py`
+The agent layer turns observations into actions.
 
-Contains pure helpers for:
+- `random.py`: legal random baseline
+- `beliefs.py`: public-information inference built on top of observations
+- `heuristic/`: the rule-based agent family
 
-- Playability checks
-- Score computation
-- Win/loss checks
-- Hint-token constraints
-- Discard legality
+This layer should not read hidden engine state directly.
 
-The game uses 3 shared lives. A life is only lost when a player tries to play a
-card that does not fit the current fireworks. When lives reach 0, the game is lost.
+### `training/`
 
-### `game/observation.py`
+The training layer runs complete games between agents and summarizes results.
 
-Builds the partial view for one player and tracks hidden-hand knowledge:
+Right now its main role is evaluation and regression checking through self-play.
 
-- Own real cards are not exposed
-- Other players' real cards are visible
-- Public state is included
-- Legal actions are included for the active player
-- Safe-play helpers can detect own-hand indices that are guaranteed playable
-  from current knowledge alone
-- Public-card counting helpers can estimate how many unseen copies of each
-  card identity still remain compatible with the observer's hand
+### `tools/`
 
-This module is still intentionally observation-side only: it does not leak
-hidden cards from the engine, but it does derive stronger public-information
-features from visible hands, discards, and fireworks.
+The tools layer is the command-line entry point for everyday work.
 
-The current heuristic layer builds on top of these features to estimate card
-distributions, discard risk, and whether a hint would likely create an
-immediately safe follow-up action for the receiving player.
+- demos
+- benchmarking
+- decision comparison
 
-### `agents/beliefs.py`
+If you want to inspect or compare agents, this is usually where to start.
 
-Builds derived belief views on top of a single `PlayerObservation`.
+### `visualization/`
 
-This layer is intentionally separate from both the engine and the raw
-observation model:
+The visualization layer renders game state, observations, and traces in a
+terminal-friendly format.
 
-- `PlayerObservation` contains visible facts
-- `PublicBeliefState` contains reusable public inference
-- Heuristic agents consume both to choose actions
+It exists to make debugging and policy iteration easier, not to own game
+logic.
 
-The current `PublicBeliefState` centralizes:
+## Heuristic Stack
 
-- reconstructed public knowledge of each player's own hand
-- remaining public copy counts
-- weighted hidden-card distributions
-- public hint updates used for hint scoring
+The heuristic family is intentionally split by responsibility:
 
-This keeps inference reusable across one turn without turning the game engine
-into a belief tracker.
+- `base.py`: high-level action selection order
+- `basic.py`: baseline public-information policy
+- `tempo.py`: stricter hint-economy behavior
+- `convention.py`: private hint-ordering conventions
+- `convention_tempo.py`: convention + tempo hybrid
+- `large_table.py`: compatibility wrapper for the current 5-player hybrid slot
+- `_mixins.py`, `_scoring.py`, `_convention_mixin.py`: shared internal helpers
 
-### `agents/heuristic/`
+That split keeps the public agent classes small and makes experiments easier to
+contain.
 
-The heuristic stack is now split by responsibility:
+## Design Rules
 
-- `base.py` keeps the high-level action-selection order
-- `_mixins.py` holds shared belief caching and scoring machinery
-- `_scoring.py` defines scoring aliases and small helper utilities
-- `_convention_mixin.py` contains the private convention logic used by the
-  convention-aware agent
+When adding or changing code, these constraints matter most:
 
-This keeps the public agent classes small while leaving the shared internals
-reusable and testable.
+1. Do not let agents access hidden cards.
+2. Keep rule logic in `game/`, not in visualization or tools.
+3. Keep reusable public inference separate from one-off policy choices.
+4. Prefer small, measurable policy changes over large opaque rewrites.
+5. Use self-play and traces together: average score alone is often not enough.
 
-### `game/engine.py`
+## Mental Model
 
-Implements the omniscient Hanabi state and core API:
+If you are new to the repo, the simplest path is:
 
-- `reset()`
-- `step(action)`
-- `get_legal_actions(player_id)`
-- `get_observation(player_id)`
-- `is_terminal()`
-- `get_score()`
-
-The engine currently supports:
-
-- Standard deck shuffling
-- Dealing
-- Playing, discarding, and giving hints
-- Strike tracking
-- Hint-token spending and recovery
-- Final-round countdown after the deck is exhausted
-- Per-turn history records
-
-### `training/self_play.py`
-
-Runs full games between agents and exposes compact summaries and aggregate
-evaluation helpers.
-
-The current heuristic stack uses this layer mainly for regression-style
-comparison between agent variants while the observation and policy models are
-still evolving.
-
-That evaluation role matters because heuristic changes are increasingly about
-decision quality, not just legality, so the project uses repeated self-play as
-the main guardrail for policy iteration.
-
-### `visualization/cli.py`
-
-Provides text-based renderers for:
-
-- Full omniscient game state
-- One player's partial observation
-- Cards, fireworks, and actions in compact debug-friendly form
+1. Read `game/engine.py` and `game/observation.py`.
+2. Read `agents/heuristic/basic.py` and `agents/heuristic/base.py`.
+3. Run `hanabi-demo-basic`.
+4. Run `hanabi-evaluate`.
+5. Use `hanabi-compare-decisions` when two agents disagree.

@@ -1,38 +1,31 @@
 # Hanabi AI
 
-Public Hanabi project focused on building:
+Hanabi AI is a small research-oriented Python project for building and testing
+Hanabi agents without leaking hidden information.
 
-1. A fully functional game engine
-2. Correct partial observations for each player
-3. A self-play framework
-4. Agent training pipelines, from heuristics to reinforcement learning
+The project has three goals:
 
-## Current Status
+1. Model the real Hanabi game correctly.
+2. Give each player only the information they are allowed to see.
+3. Make it easy to compare agent policies in self-play.
 
-The repository already includes a first working vertical slice:
+## What Is In The Repo
 
-- Strongly typed card and action models
-- Pure Hanabi rule helpers
-- A playable game engine with turn progression
-- Partial observation building with hidden own-hand cards
-- Baseline random and heuristic agents
-- Observation-side inference based on remaining public card copies
-- Heuristic policies that score discard risk and hint actionability
-- Self-play evaluation utilities
-- Automated tests for core behavior
+Today the repository already includes a complete vertical slice:
 
-Recent heuristic and evaluation progress:
+- a typed Hanabi engine
+- partial observations for each player
+- random and heuristic agents
+- self-play evaluation tooling
+- text-based visualization for debugging and traces
+- tests for engine, agents, tooling, and rendering
 
-- Multi-table benchmarking with JSON export and report-to-report comparison
-- A dedicated `TempoHeuristicAgent` focused on hint economy
-- A `ConventionTempoHeuristicAgent` hybrid that combines private conventions
-  with tempo-aware hint spending
-- A `LargeTableHeuristicAgent` variant tuned for 5-player communication
-- Shared hint-priority infrastructure across heuristic agents
-- Player-count-aware baseline weighting in `BasicHeuristicAgent`
-- Lightweight development notes for tracking strategy discoveries over time
+The project is not an RL system yet. It is currently strongest as a clean
+Hanabi environment plus a growing heuristic research harness.
 
-## Setup
+## Start Here
+
+Setup:
 
 ```powershell
 python -m venv .venv
@@ -40,93 +33,109 @@ python -m venv .venv
 python -m pip install -e .
 ```
 
-Important: activating `.venv` only switches Python environments. The
-`hanabi-demo-*` and `hanabi-evaluate` commands are created by
-`python -m pip install -e .`.
-
-For notebook work and other local development tooling:
+For notebooks and local development extras:
 
 ```powershell
 python -m pip install -e .[dev]
 ```
 
-Dependency split:
+Important:
 
-- `pyproject.toml` is the source of truth for package metadata and dependencies
-- `requirements.txt` remains intentionally empty because runtime currently uses
-  only the Python standard library
-- `requirements-dev.txt` is a compatibility shim for environments that still
-  prefer requirements files during local setup
+- Activating `.venv` only switches Python environments.
+- The `hanabi-*` commands appear after `python -m pip install -e .`.
 
-## Quick Start
+## Most Useful Commands
 
-Run the 2-player basic heuristic demo:
+Run a basic demo:
 
 ```powershell
 hanabi-demo-basic
 ```
 
-Run the 2-player convention heuristic demo:
+Run a convention-aware demo:
 
 ```powershell
 hanabi-demo-convention
 ```
 
-Run a batched comparison between the heuristics and the random baseline:
+Benchmark the current agents:
 
 ```powershell
-hanabi-evaluate --players 2 --games 200
+hanabi-evaluate --players 2 3 4 5 --games 200
 ```
 
-Run a broader benchmark across multiple table sizes and save a machine-readable
-report:
+Save a benchmark report:
 
 ```powershell
 hanabi-evaluate --players 2 3 4 5 --games 200 --json-output reports\benchmark.json
 ```
 
-The benchmark includes the basic, convention, tempo, convention-tempo hybrid,
-and large-table heuristic agents.
-
-Compare a new run against a previous saved report:
+Compare two heuristic agents decision-by-decision on one seed:
 
 ```powershell
-hanabi-evaluate --players 2 3 4 5 --games 200 --compare-json reports\benchmark_previous.json --json-output reports\benchmark_current.json
+hanabi-compare-decisions --players 5 --game-seed 7 --left-agent convention --right-agent convention-tempo
 ```
 
-Equivalent module form:
-
-```powershell
-python -m hanabi_ai.tools.demo_basic_trace
-python -m hanabi_ai.tools.demo_convention_trace --game-seed 7
-python -m hanabi_ai.tools.evaluate_agents --players 2 --games 200
-python -m hanabi_ai.tools.evaluate_agents --players 2 3 4 5 --games 200 --json-output reports\benchmark.json
-python -m hanabi_ai.tools.evaluate_agents --players 2 3 4 5 --games 200 --compare-json reports\benchmark_previous.json --json-output reports\benchmark_current.json
-```
-
-If you want to run the tools without installing the package first, point Python
-at the `src` tree explicitly:
+If you want to run modules directly without installing the package:
 
 ```powershell
 $env:PYTHONPATH = "src"
-python -m hanabi_ai.tools.demo_convention_trace --game-seed 7
+python -m hanabi_ai.tools.evaluate_agents --players 2 3 4 5 --games 50
 ```
 
-## Examples
+## How The Project Is Organized
 
-Random self-play:
+The codebase is built around one architectural rule:
+
+- the engine owns the real game state
+- observations expose only legal player-visible information
+- agents act only from observations
+
+That separation is the core of the project. If an agent can see hidden cards,
+evaluation becomes meaningless.
+
+Main source layout:
+
+```text
+src/hanabi_ai/
+|- game/           # engine, cards, actions, rules, observations
+|- agents/         # random agent, beliefs, heuristic family
+|- training/       # self-play runners and summaries
+|- tools/          # demos, benchmarks, decision comparison
+`- visualization/  # terminal rendering and trace output
+```
+
+## Agent Family
+
+Current agent lineup:
+
+- `RandomAgent`: legal random baseline
+- `BasicHeuristicAgent`: public-information heuristic baseline
+- `ConventionHeuristicAgent`: basic + private hint conventions
+- `TempoHeuristicAgent`: basic + stricter hint-economy policy
+- `ConventionTempoHeuristicAgent`: convention + tempo hybrid
+- `LargeTableHeuristicAgent`: compatibility wrapper for the current 5-player
+  `ConventionTempo` policy
+
+In practice, `ConventionTempoHeuristicAgent` is the main “strong heuristic”
+agent right now, and `LargeTableHeuristicAgent` remains useful as a stable
+named slot for larger-table experiments.
+
+## Common Workflows
+
+Inspect one game with full trace:
 
 ```python
 from hanabi_ai.agents.random import RandomAgent
-from hanabi_ai.training.self_play import run_self_play_game
+from hanabi_ai.training.self_play import run_self_play_game_with_trace
 
 agents = [RandomAgent(seed=1), RandomAgent(seed=2)]
-result = run_self_play_game(agents, seed=3)
+result = run_self_play_game_with_trace(agents, seed=3)
 
-print(result)
+print(result.trace)
 ```
 
-CLI visualization:
+Render game state and a player observation:
 
 ```python
 from hanabi_ai.game.engine import HanabiGameEngine
@@ -139,33 +148,33 @@ print()
 print(render_player_observation(engine.get_observation(0)))
 ```
 
-Self-play trace:
+## Tests
 
-```python
-from hanabi_ai.agents.random import RandomAgent
-from hanabi_ai.training.self_play import run_self_play_game_with_trace
+Run the full suite:
 
-agents = [RandomAgent(seed=1), RandomAgent(seed=2)]
-traced_game = run_self_play_game_with_trace(agents, seed=3)
+```powershell
+.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+```
 
-print(traced_game.trace)
+Run one module:
+
+```powershell
+.venv\Scripts\python.exe -m unittest tests.agents.heuristic.test_convention_tempo
 ```
 
 ## Documentation
 
-- [Architecture](docs/architecture.md)
+- [Project Architecture](docs/architecture.md)
 - [Heuristic Agents](docs/heuristic_agents.md)
-- [Agent Notes](docs/agent_notes.md)
-- [Testing](docs/testing.md)
+- [Agent Development Notes](docs/agent_notes.md)
+- [Testing Guide](docs/testing.md)
 
-## Next Steps
+## Current Direction
 
-Planned next milestones:
+The current focus is not “add more infrastructure at any cost”. The repo
+already has the core environment. The highest-value work now is:
 
-- Continue improving observation-side card knowledge modeling
-- Turn the newer risk-aware and player-count-aware heuristic ideas into
-  stronger play and hint policies
-- Keep tightening evaluation around policy quality, not just engine correctness
-- Add more engine and edge-case tests
-- Build training utilities on top of self-play
-- Introduce RL agents once the environment is stable
+- improving heuristic policy quality
+- understanding why agents diverge on specific seeds
+- preserving the clean separation between engine, observation, and policy
+- preparing a stable base for future learning-based agents

@@ -63,6 +63,13 @@ class _HeuristicBeliefMixin:
 
 
 class _HeuristicScoringMixin(_HeuristicBeliefMixin):
+    """
+    Shared scoring helpers used by the heuristic family.
+
+    This mixin owns low-level scoring primitives: card probabilities, discard
+    risk, and hint effects. Higher-level action ordering stays in `base.py`.
+    """
+
     def _card_is_playable_now(
         self, card: Card, observation: PlayerObservation
     ) -> bool:
@@ -133,6 +140,12 @@ class _HeuristicScoringMixin(_HeuristicBeliefMixin):
         hint_action: HintColorAction | HintRankAction,
         matches_hint,
     ) -> HintScore:
+        """
+        Score one concrete hint by asking two questions:
+
+        - what public knowledge changes after the hint?
+        - what kinds of cards does the hint touch right now?
+        """
         hint_effect = self._hint_effect_after_action(
             observed_hand,
             cards,
@@ -184,6 +197,9 @@ class _HeuristicScoringMixin(_HeuristicBeliefMixin):
         observation: PlayerObservation,
         hint_action: HintColorAction | HintRankAction,
     ) -> HintEffect:
+        """
+        Approximate the public effect of applying this hint once.
+        """
         belief_state = self._belief_state(observation)
         before_knowledge = belief_state.knowledge_for_player(observed_hand.player_id)
         definitely_playable_before = set(
@@ -226,6 +242,9 @@ class _HeuristicScoringMixin(_HeuristicBeliefMixin):
     def _score_discard_knowledge(
         self, knowledge: CardKnowledge, observation: PlayerObservation
     ) -> DiscardScore:
+        """
+        Rank one discard candidate from safest to most dangerous.
+        """
         card_distribution = self._distribution_for_knowledge(knowledge, observation)
         possible_cards = (
             tuple(card for card, _ in card_distribution)
@@ -352,6 +371,9 @@ class _HeuristicScoringMixin(_HeuristicBeliefMixin):
     def _discard_risk_for_card(
         self, card: Card, observation: PlayerObservation
     ) -> float:
+        """
+        Approximate how painful it would be to lose this card to a discard.
+        """
         if is_card_already_played(card, observation.fireworks):
             return 0.0
         if self._card_is_dead(card, observation):

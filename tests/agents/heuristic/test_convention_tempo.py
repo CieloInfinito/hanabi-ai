@@ -159,6 +159,45 @@ class ConventionTempoHeuristicAgentTests(SharedHeuristicAgentTests, unittest.Tes
 
         self.assertGreater(pressured_hint, stable_hint)
 
+    def test_convention_tempo_agent_prefers_far_hint_that_preserves_coordination_in_five_player_games(self) -> None:
+        observation = PlayerObservation(
+            observing_player=0,
+            current_player=0,
+            hand_knowledge=(CardKnowledge(
+                possible_colors=frozenset({Color.BLUE}),
+                possible_ranks=frozenset({Rank.ONE}),
+            ),),
+            other_player_hands=(
+                ObservedHand(player_id=1, cards=(Card(Color.RED, Rank.ONE),)),
+                ObservedHand(player_id=2, cards=(Card(Color.GREEN, Rank.ONE),)),
+                ObservedHand(player_id=3, cards=(Card(Color.YELLOW, Rank.THREE),)),
+                ObservedHand(player_id=4, cards=(Card(Color.WHITE, Rank.ONE),)),
+            ),
+            fireworks={color: 0 for color in Color},
+            discard_pile=(),
+            hint_tokens=1,
+            strike_tokens=0,
+            deck_size=40,
+            public_history=(),
+            legal_actions=(DiscardAction(card_index=0),),
+        )
+        agent = ConventionTempoHeuristicAgent()
+
+        near_plain_hint = agent._hint_priority(
+            observation,
+            observation.other_player_hands[0],
+            HintRankAction(target_player=1, rank=Rank.ONE),
+            (0, 1, 0, 0, 0, 0, 2, 0, 0),
+        )
+        far_coordination_hint = agent._hint_priority(
+            observation,
+            observation.other_player_hands[3],
+            HintRankAction(target_player=4, rank=Rank.ONE),
+            (1, 1, 0, 0, 1, 1, 6, 0, 0),
+        )
+
+        self.assertGreater(far_coordination_hint, near_plain_hint)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -15,6 +15,37 @@ from hanabi_ai.agents.random import RandomAgent
 from hanabi_ai.training.self_play import SelfPlayEvaluation, evaluate_self_play
 
 AgentFactory = Callable[[int, int, int], object]
+AGENT_ORDER = (
+    "BasicHeuristicAgent",
+    "ConventionHeuristicAgent",
+    "ConventionTempoHeuristicAgent",
+    "LargeTableHeuristicAgent",
+    "TempoHeuristicAgent",
+    "RandomAgent",
+)
+COMPARISON_PAIRS = (
+    ("Basic vs Random", "BasicHeuristicAgent", "RandomAgent"),
+    ("Convention vs Random", "ConventionHeuristicAgent", "RandomAgent"),
+    ("Convention vs Basic", "ConventionHeuristicAgent", "BasicHeuristicAgent"),
+    (
+        "ConventionTempo vs Convention",
+        "ConventionTempoHeuristicAgent",
+        "ConventionHeuristicAgent",
+    ),
+    ("ConventionTempo vs Tempo", "ConventionTempoHeuristicAgent", "TempoHeuristicAgent"),
+    ("ConventionTempo vs Basic", "ConventionTempoHeuristicAgent", "BasicHeuristicAgent"),
+    (
+        "LargeTable vs ConventionTempo",
+        "LargeTableHeuristicAgent",
+        "ConventionTempoHeuristicAgent",
+    ),
+    ("LargeTable vs Tempo", "LargeTableHeuristicAgent", "TempoHeuristicAgent"),
+    ("LargeTable vs Basic", "LargeTableHeuristicAgent", "BasicHeuristicAgent"),
+    ("LargeTable vs Random", "LargeTableHeuristicAgent", "RandomAgent"),
+    ("ConventionTempo vs Random", "ConventionTempoHeuristicAgent", "RandomAgent"),
+    ("Tempo vs Basic", "TempoHeuristicAgent", "BasicHeuristicAgent"),
+    ("Tempo vs Random", "TempoHeuristicAgent", "RandomAgent"),
+)
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -82,7 +113,9 @@ def main(argv: Sequence[str] | None = None) -> None:
 
 
 def validate_args(args: argparse.Namespace) -> None:
-    invalid_player_counts = [player_count for player_count in args.players if not 2 <= player_count <= 5]
+    invalid_player_counts = [
+        player_count for player_count in args.players if not 2 <= player_count <= 5
+    ]
     if invalid_player_counts:
         raise ValueError(
             "--players values must be between 2 and 5. "
@@ -100,42 +133,17 @@ def build_benchmark_report(
     agent_seed_base: int = 1000,
 ) -> dict[str, Any]:
     unique_player_counts = tuple(dict.fromkeys(player_counts))
-    agent_factories: dict[str, AgentFactory] = {
-        "BasicHeuristicAgent": lambda player_id, game_index, player_count: BasicHeuristicAgent(),
-        "ConventionHeuristicAgent": (
-            lambda player_id, game_index, player_count: ConventionHeuristicAgent()
-        ),
-        "ConventionTempoHeuristicAgent": (
-            lambda player_id, game_index, player_count: ConventionTempoHeuristicAgent()
-        ),
-        "LargeTableHeuristicAgent": (
-            lambda player_id, game_index, player_count: LargeTableHeuristicAgent()
-        ),
-        "TempoHeuristicAgent": lambda player_id, game_index, player_count: TempoHeuristicAgent(),
-        "RandomAgent": (
-            lambda player_id, game_index, player_count: RandomAgent(
-                seed=agent_seed_base + (game_index * player_count) + player_id
-            )
-        ),
-    }
-
+    agent_factories = _build_agent_factories(agent_seed_base)
     result_sets: list[dict[str, Any]] = []
-    aggregate_scores: dict[str, list[float]] = {name: [] for name in agent_factories}
+    aggregate_scores: dict[str, list[float]] = {name: [] for name in AGENT_ORDER}
 
     for player_count in unique_player_counts:
-        evaluations = {
-            name: evaluate_self_play(
-                lambda player_id, game_index, factory=factory, current_player_count=player_count: factory(
-                    player_id,
-                    game_index,
-                    current_player_count,
-                ),
-                player_count=player_count,
-                game_count=game_count,
-                seed_base=seed_base,
-            )
-            for name, factory in agent_factories.items()
-        }
+        evaluations = _evaluate_agent_family(
+            agent_factories,
+            player_count=player_count,
+            game_count=game_count,
+            seed_base=seed_base,
+        )
         for name, evaluation in evaluations.items():
             aggregate_scores[name].append(evaluation.average_score)
 
@@ -146,60 +154,7 @@ def build_benchmark_report(
                     name: serialize_evaluation(evaluation)
                     for name, evaluation in evaluations.items()
                 },
-                "comparisons": {
-                    "Basic vs Random": build_comparison_dict(
-                        evaluations["BasicHeuristicAgent"],
-                        evaluations["RandomAgent"],
-                    ),
-                    "Convention vs Random": build_comparison_dict(
-                        evaluations["ConventionHeuristicAgent"],
-                        evaluations["RandomAgent"],
-                    ),
-                    "Convention vs Basic": build_comparison_dict(
-                        evaluations["ConventionHeuristicAgent"],
-                        evaluations["BasicHeuristicAgent"],
-                    ),
-                    "ConventionTempo vs Convention": build_comparison_dict(
-                        evaluations["ConventionTempoHeuristicAgent"],
-                        evaluations["ConventionHeuristicAgent"],
-                    ),
-                    "ConventionTempo vs Tempo": build_comparison_dict(
-                        evaluations["ConventionTempoHeuristicAgent"],
-                        evaluations["TempoHeuristicAgent"],
-                    ),
-                    "ConventionTempo vs Basic": build_comparison_dict(
-                        evaluations["ConventionTempoHeuristicAgent"],
-                        evaluations["BasicHeuristicAgent"],
-                    ),
-                    "LargeTable vs ConventionTempo": build_comparison_dict(
-                        evaluations["LargeTableHeuristicAgent"],
-                        evaluations["ConventionTempoHeuristicAgent"],
-                    ),
-                    "LargeTable vs Tempo": build_comparison_dict(
-                        evaluations["LargeTableHeuristicAgent"],
-                        evaluations["TempoHeuristicAgent"],
-                    ),
-                    "LargeTable vs Basic": build_comparison_dict(
-                        evaluations["LargeTableHeuristicAgent"],
-                        evaluations["BasicHeuristicAgent"],
-                    ),
-                    "LargeTable vs Random": build_comparison_dict(
-                        evaluations["LargeTableHeuristicAgent"],
-                        evaluations["RandomAgent"],
-                    ),
-                    "ConventionTempo vs Random": build_comparison_dict(
-                        evaluations["ConventionTempoHeuristicAgent"],
-                        evaluations["RandomAgent"],
-                    ),
-                    "Tempo vs Basic": build_comparison_dict(
-                        evaluations["TempoHeuristicAgent"],
-                        evaluations["BasicHeuristicAgent"],
-                    ),
-                    "Tempo vs Random": build_comparison_dict(
-                        evaluations["TempoHeuristicAgent"],
-                        evaluations["RandomAgent"],
-                    ),
-                },
+                "comparisons": build_comparison_section(evaluations),
                 "ranking": build_agent_ranking(evaluations),
             }
         )
@@ -228,9 +183,67 @@ def build_benchmark_report(
     }
 
 
+def _build_agent_factories(agent_seed_base: int) -> dict[str, AgentFactory]:
+    return {
+        "BasicHeuristicAgent": (
+            lambda player_id, game_index, player_count: BasicHeuristicAgent()
+        ),
+        "ConventionHeuristicAgent": (
+            lambda player_id, game_index, player_count: ConventionHeuristicAgent()
+        ),
+        "ConventionTempoHeuristicAgent": (
+            lambda player_id, game_index, player_count: ConventionTempoHeuristicAgent()
+        ),
+        "LargeTableHeuristicAgent": (
+            lambda player_id, game_index, player_count: LargeTableHeuristicAgent()
+        ),
+        "TempoHeuristicAgent": (
+            lambda player_id, game_index, player_count: TempoHeuristicAgent()
+        ),
+        "RandomAgent": (
+            lambda player_id, game_index, player_count: RandomAgent(
+                seed=agent_seed_base + (game_index * player_count) + player_id
+            )
+        ),
+    }
+
+
+def _evaluate_agent_family(
+    agent_factories: dict[str, AgentFactory],
+    *,
+    player_count: int,
+    game_count: int,
+    seed_base: int,
+) -> dict[str, SelfPlayEvaluation]:
+    return {
+        name: evaluate_self_play(
+            lambda player_id, game_index, factory=factory, current_player_count=player_count: factory(
+                player_id,
+                game_index,
+                current_player_count,
+            ),
+            player_count=player_count,
+            game_count=game_count,
+            seed_base=seed_base,
+        )
+        for name, factory in agent_factories.items()
+    }
+
+
+def build_comparison_section(
+    evaluations: dict[str, SelfPlayEvaluation],
+) -> dict[str, dict[str, float]]:
+    return {
+        label: build_comparison_dict(evaluations[left], evaluations[right])
+        for label, left, right in COMPARISON_PAIRS
+    }
+
+
 def serialize_evaluation(evaluation: SelfPlayEvaluation) -> dict[str, Any]:
     serialized = asdict(evaluation)
-    serialized["score_distribution"] = [list(item) for item in evaluation.score_distribution]
+    serialized["score_distribution"] = [
+        list(item) for item in evaluation.score_distribution
+    ]
     return serialized
 
 
@@ -286,40 +299,10 @@ def build_comparison_dict(
 
 def format_benchmark_report(report: dict[str, Any]) -> str:
     config = report["config"]
-    blocks = [
-        (
-            "Benchmark configuration\n"
-            f"  player_counts: {', '.join(str(value) for value in config['player_counts'])}\n"
-            f"  games_per_agent: {config['game_count']}\n"
-            f"  seed_base: {config['seed_base']}\n"
-            f"  agent_seed_base: {config['agent_seed_base']}"
-        )
-    ]
+    blocks = [_format_benchmark_config(config)]
 
     for result_set in report["result_sets"]:
-        player_count = result_set["player_count"]
-        blocks.append(f"=== {player_count}-Player Table ===")
-
-        for agent_name, evaluation in result_set["evaluations"].items():
-            blocks.append(_format_evaluation(agent_name, evaluation))
-
-        ranking_lines = ["Ranking"]
-        ranking_lines.extend(
-            (
-                f"  {index}. {entry['agent']} | average_score={entry['average_score']:.3f} "
-                f"| score_at_least_15_rate={entry['score_at_least_15_rate']:.3%} "
-                f"| loss_rate={entry['loss_rate']:.3%}"
-            )
-            for index, entry in enumerate(result_set["ranking"], start=1)
-        )
-        blocks.append("\n".join(ranking_lines))
-
-        comparison_lines = ["Comparisons"]
-        comparison_lines.extend(
-            _format_comparison(label, comparison)
-            for label, comparison in result_set["comparisons"].items()
-        )
-        blocks.append("\n".join(comparison_lines))
+        blocks.extend(_format_table_section(result_set))
 
     aggregate_lines = ["=== Aggregate Ranking Across Player Counts ==="]
     aggregate_lines.extend(
@@ -448,7 +431,9 @@ def format_report_delta(
     delta_report = build_report_delta(current_report, previous_report)
     blocks = [f"=== Delta vs {previous_path} ==="]
     if not delta_report["shared_player_counts"]:
-        blocks.append("No shared player counts between the current report and the previous report.")
+        blocks.append(
+            "No shared player counts between the current report and the previous report."
+        )
         return "\n".join(blocks)
 
     blocks.append(
@@ -512,6 +497,42 @@ def _format_evaluation(name: str, evaluation: dict[str, Any]) -> str:
             f"{_format_distribution(evaluation['score_distribution'])}",
         ]
     )
+
+
+def _format_benchmark_config(config: dict[str, Any]) -> str:
+    return (
+        "Benchmark configuration\n"
+        f"  player_counts: {', '.join(str(value) for value in config['player_counts'])}\n"
+        f"  games_per_agent: {config['game_count']}\n"
+        f"  seed_base: {config['seed_base']}\n"
+        f"  agent_seed_base: {config['agent_seed_base']}"
+    )
+
+
+def _format_table_section(result_set: dict[str, Any]) -> list[str]:
+    player_count = result_set["player_count"]
+    blocks = [f"=== {player_count}-Player Table ==="]
+    for agent_name, evaluation in result_set["evaluations"].items():
+        blocks.append(_format_evaluation(agent_name, evaluation))
+
+    ranking_lines = ["Ranking"]
+    ranking_lines.extend(
+        (
+            f"  {index}. {entry['agent']} | average_score={entry['average_score']:.3f} "
+            f"| score_at_least_15_rate={entry['score_at_least_15_rate']:.3%} "
+            f"| loss_rate={entry['loss_rate']:.3%}"
+        )
+        for index, entry in enumerate(result_set["ranking"], start=1)
+    )
+    blocks.append("\n".join(ranking_lines))
+
+    comparison_lines = ["Comparisons"]
+    comparison_lines.extend(
+        _format_comparison(label, comparison)
+        for label, comparison in result_set["comparisons"].items()
+    )
+    blocks.append("\n".join(comparison_lines))
+    return blocks
 
 
 def _format_comparison(label: str, comparison: dict[str, float]) -> str:

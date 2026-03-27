@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 
+from hanabi_ai.agents.heuristic.convention_tempo import ConventionTempoHeuristicAgent
 from hanabi_ai.agents.heuristic.large_table import LargeTableHeuristicAgent
 from hanabi_ai.game.actions import AgentDecision, DiscardAction, HintPresentation, HintRankAction
 from hanabi_ai.game.cards import Card, Color, Rank
@@ -68,7 +69,7 @@ class LargeTableHeuristicAgentTests(SharedHeuristicAgentTests, unittest.TestCase
 
         self.assertFalse(prefer_discard)
 
-    def test_large_table_agent_rescues_far_hint_with_critical_or_chain_value(self) -> None:
+    def test_large_table_agent_matches_convention_tempo_five_player_hint_priority(self) -> None:
         observation = PlayerObservation(
             observing_player=0,
             current_player=0,
@@ -91,21 +92,22 @@ class LargeTableHeuristicAgentTests(SharedHeuristicAgentTests, unittest.TestCase
             legal_actions=(DiscardAction(card_index=0),),
         )
         agent = LargeTableHeuristicAgent()
+        baseline = ConventionTempoHeuristicAgent()
 
-        near_plain_hint = agent._hint_priority(
+        large_table_priority = agent._hint_priority(
             observation,
-            observation.other_player_hands[0],
-            HintRankAction(target_player=1, rank=Rank.ONE),
-            (0, 1, 0, 0, 0, 0, 2, 0, 0),
+            observation.other_player_hands[3],
+            HintRankAction(target_player=4, rank=Rank.ONE),
+            (1, 1, 0, 0, 1, 1, 6, 0, 0),
         )
-        far_chain_hint = agent._hint_priority(
+        convention_tempo_priority = baseline._hint_priority(
             observation,
             observation.other_player_hands[3],
             HintRankAction(target_player=4, rank=Rank.ONE),
             (1, 1, 0, 0, 1, 1, 6, 0, 0),
         )
 
-        self.assertGreaterEqual(far_chain_hint[1], near_plain_hint[1])
+        self.assertEqual(large_table_priority, convention_tempo_priority)
 
 
 if __name__ == "__main__":

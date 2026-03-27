@@ -29,17 +29,19 @@ observations over long prose.
 - In 5-player games, local tempo improvements can be real without being net
   positive. Some seeds improved when the agent converted weak hints into
   earlier plays or discards, but the losses were often larger than the wins.
-- The current `LargeTableHeuristicAgent` is a useful experiment, but it is not
-  yet a stronger replacement for `ConventionTempoHeuristicAgent`.
+- The old `LargeTableHeuristicAgent` experiment was useful for isolating
+  5-player hypotheses, but the behavior that survived that round has now been
+  folded back into `ConventionTempoHeuristicAgent`.
 - Private communication still seems to matter more than pure local tempo in
   5-player tables. The convention-aware agents remain the most reliable
   aggregate performers there.
 - A recurring failure mode in 5-player traces is dropping shared coordination
   too early. Discarding or taking a local play one turn sooner can look good
   tactically while still weakening the table's future turns.
-- The current `LargeTableHeuristicAgent` has now been used as a controlled
-  experiment branch rather than as a candidate replacement baseline. That made
-  it easier to test one hypothesis at a time against `ConventionTempo`.
+- `LargeTableHeuristicAgent` now remains mainly as a compatibility wrapper and
+  named benchmark slot. New real 5-player policy changes should land in
+  `ConventionTempoHeuristicAgent` unless the project explicitly reopens a
+  separate experimental branch.
 - Three recent 5-player hypotheses did not produce a stronger agent:
   "good enough hint beats discard" was behaviorally unstable and did not
   improve aggregate results; two later narrower hypotheses produced no
@@ -64,10 +66,6 @@ observations over long prose.
   rank would become immediately live?
 - Hand-size differences likely matter. In 4-5 player games each player has 4
   cards, which changes both the value of a hint and the cost of a discard.
-- A dedicated large-table policy is now worth testing directly instead of
-  folding every 5-player idea back into the general tempo heuristic.
-- A dedicated large-table policy probably needs a different cooperation model,
-  not just stronger weights on the existing tempo features.
 - The main 5-player decision may be "is this hint still good enough to preserve
   coordination?" rather than "is this the best immediate local tempo play?"
 - Hints that are only moderately actionable can still outperform a discard if
@@ -77,9 +75,10 @@ observations over long prose.
 - Small 5-player policy tweaks may already be mostly subsumed by
   `ConventionTempoHeuristicAgent`; future improvements may need a more
   structural change than a local ranking or threshold adjustment.
-- A useful role for `LargeTableHeuristicAgent` is now "hypothesis harness":
-  start from the strongest stable heuristic and introduce exactly one behavior
-  change, then check whether that actually creates meaningful divergence.
+- If the project reintroduces a dedicated `LargeTableHeuristicAgent`, it should
+  again be treated as a narrow hypothesis harness: start from the strongest
+  stable heuristic and introduce exactly one behavior change, then check
+  whether that actually creates meaningful divergence.
 
 ## Open Questions
 
@@ -89,8 +88,6 @@ observations over long prose.
   because the two cover each other's weaknesses?
 - Should the project eventually keep separate tuned agents for 2-player and
   4-5 player tables instead of forcing one universal heuristic?
-- Should the next 5-player experiment start from `ConventionTempoHeuristicAgent`
-  instead of from a tempo-first branch like `LargeTableHeuristicAgent`?
 - What is the right threshold for keeping a "good enough" hint over taking a
   local discard in 5-player games?
 - Are the most valuable 5-player hints the ones that unlock the next player,

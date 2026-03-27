@@ -34,23 +34,15 @@ class PublicBeliefState:
 
     @classmethod
     def from_observation(cls, observation: PlayerObservation) -> PublicBeliefState:
+        """
+        Build one reusable public-inference snapshot for a single observation.
+        """
         remaining_card_counts = build_remaining_card_counts(observation)
-        public_hand_knowledge_by_player: dict[int, tuple[CardKnowledge, ...]] = {
-            observation.observing_player: observation.hand_knowledge
-        }
-
-        for observed_hand in observation.other_player_hands:
-            public_hand_knowledge_by_player[observed_hand.player_id] = (
-                reconstruct_public_hand_knowledge(observation, observed_hand.player_id)
-            )
-
-        card_distributions_by_player = {
-            player_id: tuple(
-                estimate_card_distribution(knowledge, observation)
-                for knowledge in hand_knowledge
-            )
-            for player_id, hand_knowledge in public_hand_knowledge_by_player.items()
-        }
+        public_hand_knowledge_by_player = cls._build_public_hand_knowledge(observation)
+        card_distributions_by_player = cls._build_card_distributions_by_player(
+            observation,
+            public_hand_knowledge_by_player,
+        )
         card_distributions_by_knowledge = {
             knowledge: distribution
             for hand_knowledge, hand_distributions in zip(
@@ -72,6 +64,34 @@ class PublicBeliefState:
             card_distributions_by_player=card_distributions_by_player,
             card_distributions_by_knowledge=card_distributions_by_knowledge,
         )
+
+    @staticmethod
+    def _build_public_hand_knowledge(
+        observation: PlayerObservation,
+    ) -> dict[int, tuple[CardKnowledge, ...]]:
+        public_hand_knowledge_by_player: dict[int, tuple[CardKnowledge, ...]] = {
+            observation.observing_player: observation.hand_knowledge
+        }
+
+        for observed_hand in observation.other_player_hands:
+            public_hand_knowledge_by_player[observed_hand.player_id] = (
+                reconstruct_public_hand_knowledge(observation, observed_hand.player_id)
+            )
+
+        return public_hand_knowledge_by_player
+
+    @staticmethod
+    def _build_card_distributions_by_player(
+        observation: PlayerObservation,
+        public_hand_knowledge_by_player: dict[int, tuple[CardKnowledge, ...]],
+    ) -> dict[int, tuple[tuple[tuple[Card, float], ...], ...]]:
+        return {
+            player_id: tuple(
+                estimate_card_distribution(knowledge, observation)
+                for knowledge in hand_knowledge
+            )
+            for player_id, hand_knowledge in public_hand_knowledge_by_player.items()
+        }
 
     def knowledge_for_player(self, player_id: int) -> tuple[CardKnowledge, ...]:
         return self.public_hand_knowledge_by_player[player_id]

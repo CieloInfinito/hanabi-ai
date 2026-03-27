@@ -136,11 +136,7 @@ class HanabiGameEngine:
         decision = normalize_agent_decision(action)
         action = decision.action
 
-        legal_actions = self.get_legal_actions(self.current_player)
-        if action not in legal_actions:
-            raise ValueError(
-                f"Illegal action for player {self.current_player}: {action!s}."
-            )
+        self._validate_legal_action(action)
         self._validate_hint_presentation(action, decision.hint_presentation)
 
         acting_player = self.current_player
@@ -151,36 +147,21 @@ class HanabiGameEngine:
         play_succeeded: bool | None = None
         drew_replacement = False
 
-        if isinstance(action, PlayAction):
-            removed_card, drew_replacement, play_succeeded = self._handle_play_action(
-                acting_player, action
-            )
-        elif isinstance(action, DiscardAction):
-            removed_card, drew_replacement = self._handle_discard_action(
-                acting_player, action
-            )
-        elif isinstance(action, HintColorAction):
-            revealed_indices, revealed_groups = self._handle_hint_color_action(
-                acting_player,
-                action,
-                decision.hint_presentation,
-            )
-        elif isinstance(action, HintRankAction):
-            revealed_indices, revealed_groups = self._handle_hint_rank_action(
-                acting_player,
-                action,
-                decision.hint_presentation,
-            )
-        else:
-            raise TypeError(f"Unsupported action type: {type(action)!r}.")
+        (
+            removed_card,
+            revealed_indices,
+            revealed_groups,
+            play_succeeded,
+            drew_replacement,
+        ) = self._apply_action(acting_player, action, decision.hint_presentation)
 
-        record = TurnRecord(
-            player_id=acting_player,
+        record = self._build_turn_record(
+            acting_player=acting_player,
             action=action,
             removed_card=removed_card,
             revealed_indices=revealed_indices,
             revealed_groups=revealed_groups,
-            fireworks_before=fireworks_before if is_hint_action(action) else None,
+            fireworks_before=fireworks_before,
             play_succeeded=play_succeeded,
             drew_replacement=drew_replacement,
         )
@@ -193,16 +174,15 @@ class HanabiGameEngine:
         if not game_over:
             self.current_player = (self.current_player + 1) % self.player_count
 
-        return EngineStepResult(
+        return self._build_step_result(
             acting_player=acting_player,
             action=action,
             removed_card=removed_card,
             revealed_indices=revealed_indices,
             revealed_groups=revealed_groups,
-            fireworks_before=fireworks_before if is_hint_action(action) else None,
+            fireworks_before=fireworks_before,
             play_succeeded=play_succeeded,
             drew_replacement=drew_replacement,
-            score=self.get_score(),
             game_over=game_over,
         )
 
@@ -263,19 +243,7 @@ class HanabiGameEngine:
             hint_tokens=self.hint_tokens,
             strike_tokens=self.strike_tokens,
             deck_size=len(self.deck),
-            public_history=tuple(
-                PublicTurnRecord(
-                    player_id=record.player_id,
-                    action=record.action,
-                    revealed_indices=record.revealed_indices,
-                    revealed_groups=record.revealed_groups,
-                    fireworks_before=dict(record.fireworks_before)
-                    if record.fireworks_before is not None
-                    else None,
-                    drew_replacement=record.drew_replacement,
-                )
-                for record in self.history
-            ),
+            public_history=self._build_public_history(),
             legal_actions=legal_actions,
         )
 
@@ -379,6 +347,122 @@ class HanabiGameEngine:
             raise ValueError(
                 "hint_presentation can only be provided for hint actions."
             )
+
+    def _validate_legal_action(self, action: Action) -> None:
+        legal_actions = self.get_legal_actions(self.current_player)
+        if action not in legal_actions:
+            raise ValueError(
+                f"Illegal action for player {self.current_player}: {action!s}."
+            )
+
+    def _apply_action(
+        self,
+        acting_player: int,
+        action: Action,
+        hint_presentation: HintPresentation | None,
+    ) -> tuple[Card | None, tuple[int, ...], tuple[tuple[int, ...], ...], bool | None, bool]:
+        removed_card: Card | None = None
+        revealed_indices: tuple[int, ...] = ()
+        revealed_groups: tuple[tuple[int, ...], ...] = ()
+        play_succeeded: bool | None = None
+        drew_replacement = False
+
+        if isinstance(action, PlayAction):
+            removed_card, drew_replacement, play_succeeded = self._handle_play_action(
+                acting_player, action
+            )
+        elif isinstance(action, DiscardAction):
+            removed_card, drew_replacement = self._handle_discard_action(
+                acting_player, action
+            )
+        elif isinstance(action, HintColorAction):
+            revealed_indices, revealed_groups = self._handle_hint_color_action(
+                acting_player,
+                action,
+                hint_presentation,
+            )
+        elif isinstance(action, HintRankAction):
+            revealed_indices, revealed_groups = self._handle_hint_rank_action(
+                acting_player,
+                action,
+                hint_presentation,
+            )
+        else:
+            raise TypeError(f"Unsupported action type: {type(action)!r}.")
+
+        return (
+            removed_card,
+            revealed_indices,
+            revealed_groups,
+            play_succeeded,
+            drew_replacement,
+        )
+
+    def _build_turn_record(
+        self,
+        *,
+        acting_player: int,
+        action: Action,
+        removed_card: Card | None,
+        revealed_indices: tuple[int, ...],
+        revealed_groups: tuple[tuple[int, ...], ...],
+        fireworks_before: dict[Color, int],
+        play_succeeded: bool | None,
+        drew_replacement: bool,
+    ) -> TurnRecord:
+        return TurnRecord(
+            player_id=acting_player,
+            action=action,
+            removed_card=removed_card,
+            revealed_indices=revealed_indices,
+            revealed_groups=revealed_groups,
+            fireworks_before=fireworks_before if is_hint_action(action) else None,
+            play_succeeded=play_succeeded,
+            drew_replacement=drew_replacement,
+        )
+
+    def _build_step_result(
+        self,
+        *,
+        acting_player: int,
+        action: Action,
+        removed_card: Card | None,
+        revealed_indices: tuple[int, ...],
+        revealed_groups: tuple[tuple[int, ...], ...],
+        fireworks_before: dict[Color, int],
+        play_succeeded: bool | None,
+        drew_replacement: bool,
+        game_over: bool,
+    ) -> EngineStepResult:
+        return EngineStepResult(
+            acting_player=acting_player,
+            action=action,
+            removed_card=removed_card,
+            revealed_indices=revealed_indices,
+            revealed_groups=revealed_groups,
+            fireworks_before=fireworks_before if is_hint_action(action) else None,
+            play_succeeded=play_succeeded,
+            drew_replacement=drew_replacement,
+            score=self.get_score(),
+            game_over=game_over,
+        )
+
+    def _build_public_history(self) -> tuple[PublicTurnRecord, ...]:
+        return tuple(
+            PublicTurnRecord(
+                player_id=record.player_id,
+                action=record.action,
+                revealed_indices=record.revealed_indices,
+                revealed_groups=record.revealed_groups,
+                fireworks_before=(
+                    dict(record.fireworks_before)
+                    if record.fireworks_before is not None
+                    else None
+                ),
+                drew_replacement=record.drew_replacement,
+            )
+            for record in self.history
+        )
 
     def _resolve_revealed_indices(
         self,
