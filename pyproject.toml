@@ -24,6 +24,7 @@ dev = [
 hanabi-demo-basic = "hanabi_ai.tools.demo_basic_trace:main"
 hanabi-demo-convention = "hanabi_ai.tools.demo_convention_trace:main"
 hanabi-evaluate = "hanabi_ai.tools.evaluate_agents:main"
+hanabi-compare-decisions = "hanabi_ai.tools.compare_agent_decisions:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

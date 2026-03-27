@@ -109,6 +109,52 @@ class BaseHeuristicAgent(_HeuristicScoringMixin):
         """
         return ()
 
+    def explain_action_choice(
+        self,
+        observation: PlayerObservation,
+        action: Action,
+    ) -> tuple[str, ...]:
+        """
+        Return optional human-readable notes about why this action was chosen.
+        """
+        ranked_hints = self._ranked_hint_candidates(observation)
+        if not ranked_hints:
+            return ()
+
+        lines = ["Hint candidates:"]
+        for index, (candidate_action, score, priority) in enumerate(
+            ranked_hints[:3],
+            start=1,
+        ):
+            lines.append(
+                f"{index}. {candidate_action} | {self._format_hint_debug(score, priority)}"
+            )
+
+        if isinstance(action, (HintColorAction, HintRankAction)):
+            chosen_entry = next(
+                (
+                    (score, priority)
+                    for candidate_action, score, priority in ranked_hints
+                    if candidate_action == action
+                ),
+                None,
+            )
+            if chosen_entry is not None:
+                score, priority = chosen_entry
+                lines.append(
+                    "Chosen hint: "
+                    f"{action} | {self._format_hint_debug(score, priority)}"
+                )
+            return tuple(lines)
+
+        best_hint_action, best_hint_score, best_hint_priority = ranked_hints[0]
+        lines.append(
+            "Best hint alternative: "
+            f"{best_hint_action} | "
+            f"{self._format_hint_debug(best_hint_score, best_hint_priority)}"
+        )
+        return tuple(lines)
+
     def _apply_private_conventions(
         self, observation: PlayerObservation
     ) -> PlayerObservation:
@@ -159,34 +205,10 @@ class BaseHeuristicAgent(_HeuristicScoringMixin):
     def _choose_hint_for_other_players(
         self, observation: PlayerObservation
     ) -> tuple[HintColorAction | HintRankAction | None, HintScore | None]:
-        legal_hints = [
-            action
-            for action in observation.legal_actions
-            if isinstance(action, (HintColorAction, HintRankAction))
-        ]
-        if not legal_hints:
+        ranked_hints = self._ranked_hint_candidates(observation)
+        if not ranked_hints:
             return None, None
-
-        best_hint: HintColorAction | HintRankAction | None = None
-        best_score: HintScore | None = None
-        best_priority = None
-
-        for observed_hand in observation.other_player_hands:
-            candidate_hints = self._build_candidate_hints(
-                observed_hand, legal_hints, observation
-            )
-            for hint_action, score in candidate_hints:
-                priority = self._hint_priority(
-                    observation,
-                    observed_hand,
-                    hint_action,
-                    score,
-                )
-                if best_priority is None or priority > best_priority:
-                    best_hint = hint_action
-                    best_score = score
-                    best_priority = priority
-
+        best_hint, best_score, _ = ranked_hints[0]
         return best_hint, best_score
 
     def _choose_discard_action(
@@ -425,6 +447,32 @@ class BaseHeuristicAgent(_HeuristicScoringMixin):
         )
         return known_attribute_count <= 1
 
+    def _receiver_under_pressure(
+        self,
+        observation: PlayerObservation,
+        player_id: int,
+    ) -> bool:
+        belief_state = self._belief_state(observation)
+        knowledge = belief_state.knowledge_for_player(player_id)
+        if belief_state.guaranteed_play_indices_for_knowledge(knowledge):
+            return False
+
+        best_discard_score = max(
+            (
+                self._score_discard_knowledge(card_knowledge, observation)
+                for card_knowledge in knowledge
+            ),
+            default=None,
+        )
+        if best_discard_score is None:
+            return False
+
+        definitely_safe_discard = bool(best_discard_score[0] or best_discard_score[1])
+        expected_discard_risk = -best_discard_score[5]
+        return self._receiver_needs_help(observation, player_id) and (
+            not definitely_safe_discard and expected_discard_risk >= 1.0
+        )
+
     def _follow_on_play_value(
         self,
         observation: PlayerObservation,
@@ -474,3 +522,63 @@ class BaseHeuristicAgent(_HeuristicScoringMixin):
         if isinstance(hint_action, HintColorAction):
             return card.color == hint_action.color
         return card.rank == hint_action.rank
+
+    def _ranked_hint_candidates(
+        self,
+        observation: PlayerObservation,
+    ) -> list[
+        tuple[
+            HintColorAction | HintRankAction,
+            HintScore,
+            tuple[HintScore, int, int, int, int, int, int, int],
+        ]
+    ]:
+        legal_hints = [
+            action
+            for action in observation.legal_actions
+            if isinstance(action, (HintColorAction, HintRankAction))
+        ]
+        if not legal_hints:
+            return []
+
+        ranked_hints: list[
+            tuple[
+                HintColorAction | HintRankAction,
+                HintScore,
+                tuple[HintScore, int, int, int, int, int, int, int],
+            ]
+        ] = []
+        insertion_order = 0
+        for observed_hand in observation.other_player_hands:
+            candidate_hints = self._build_candidate_hints(
+                observed_hand,
+                legal_hints,
+                observation,
+            )
+            for hint_action, score in candidate_hints:
+                priority = self._hint_priority(
+                    observation,
+                    observed_hand,
+                    hint_action,
+                    score,
+                )
+                ranked_hints.append((hint_action, score, priority, insertion_order))
+                insertion_order += 1
+
+        ranked_hints.sort(key=lambda item: item[2], reverse=True)
+        return [
+            (hint_action, score, priority)
+            for hint_action, score, priority, _ in ranked_hints
+        ]
+
+    def _format_hint_debug(
+        self,
+        score: HintScore,
+        priority: tuple[HintScore, int, int, int, int, int, int, int],
+    ) -> str:
+        return (
+            f"bonus={priority[1]} safe={score[0]} playable={score[1]} "
+            f"useful={score[5]} info={score[6]} follow_on={priority[2]} "
+            f"needs_help={priority[3]} immediate={priority[4]} "
+            f"near_term={priority[5]} critical={priority[7]}"
+        )

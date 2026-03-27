@@ -50,6 +50,7 @@ class EvaluateAgentsToolTests(unittest.TestCase):
                 "BasicHeuristicAgent",
                 "ConventionHeuristicAgent",
                 "ConventionTempoHeuristicAgent",
+                "LargeTableHeuristicAgent",
                 "TempoHeuristicAgent",
                 "RandomAgent",
             },
@@ -59,12 +60,14 @@ class EvaluateAgentsToolTests(unittest.TestCase):
             self.assertIn("comparisons", result_set)
             self.assertIn("Tempo vs Random", result_set["comparisons"])
             self.assertIn("ConventionTempo vs Tempo", result_set["comparisons"])
+            self.assertIn("LargeTable vs ConventionTempo", result_set["comparisons"])
             self.assertEqual(
                 set(result_set["evaluations"]),
                 {
                     "BasicHeuristicAgent",
                     "ConventionHeuristicAgent",
                     "ConventionTempoHeuristicAgent",
+                    "LargeTableHeuristicAgent",
                     "TempoHeuristicAgent",
                     "RandomAgent",
                 },

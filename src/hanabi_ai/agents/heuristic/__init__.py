@@ -4,6 +4,7 @@ from .base import BaseHeuristicAgent
 from .basic import BasicHeuristicAgent
 from .convention import ConventionHeuristicAgent
 from .convention_tempo import ConventionTempoHeuristicAgent
+from .large_table import LargeTableHeuristicAgent
 from .tempo import TempoHeuristicAgent
 
 __all__ = [
@@ -11,5 +12,6 @@ __all__ = [
     "BasicHeuristicAgent",
     "ConventionHeuristicAgent",
     "ConventionTempoHeuristicAgent",
+    "LargeTableHeuristicAgent",
     "TempoHeuristicAgent",
 ]

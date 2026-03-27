@@ -9,6 +9,7 @@ The project currently includes three baseline agents:
 - `ConventionHeuristicAgent`
 - `TempoHeuristicAgent`
 - `ConventionTempoHeuristicAgent`
+- `LargeTableHeuristicAgent`
 
 The heuristic agents use only partial observations and public information.
 
@@ -39,6 +40,8 @@ Recent architecture direction:
   its own tactical hint-economy adjustments
 - `ConventionTempoHeuristicAgent` combines convention-aware communication with
   tempo-aware spending rules
+- `LargeTableHeuristicAgent` keeps Tempo's core policy but adds extra large-table
+  weighting for near-term hints, stuck receivers, and visible follow-on chains
 
 ## `RandomAgent`
 
@@ -153,6 +156,25 @@ one suppresses the other.
 
 So far, this hybrid has generally been the strongest aggregate heuristic in
 short benchmark runs across 2-5 player tables.
+
+## `LargeTableHeuristicAgent`
+
+Defined in `src/hanabi_ai/agents/heuristic/large_table.py`.
+
+This variant specializes the tempo policy for 5-player tables, where the turn
+cycle is long enough that distant informational hints decay in value faster.
+
+In practice it:
+
+- gives more weight to actionable hints for the next one or two players
+- prioritizes helping publicly stuck receivers before they are forced into weak
+  discard turns
+- rewards visible follow-on chains more strongly
+- penalizes distant noisy hints that touch several non-playable cards
+
+The goal is not to replace the shared heuristic family, but to give the
+benchmark suite a clean experimental branch for 5-player tuning without
+overfitting the rest of the formats.
 
 ## Visualization Support
 

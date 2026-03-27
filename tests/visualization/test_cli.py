@@ -12,6 +12,7 @@ from hanabi_ai.game.observation import CardKnowledge, PlayerObservation, PublicT
 from hanabi_ai.visualization.cli import (
     render_game_state,
     render_player_observation,
+    render_self_play_turn,
     render_step_result,
 )
 
@@ -203,6 +204,33 @@ class VisualizationCliTests(unittest.TestCase):
             "Private interpretation: Convention heuristic: rank hints group playable cards first, then non-playable cards.",
             rendered,
         )
+
+    def test_render_self_play_turn_includes_hint_candidate_notes_for_heuristic_agent(self) -> None:
+        engine = HanabiGameEngine(player_count=2, seed=32)
+        engine.hands[1] = [
+            Card(Color.BLUE, Rank.ONE),
+            Card(Color.RED, Rank.TWO),
+            Card(Color.GREEN, Rank.THREE),
+            Card(Color.YELLOW, Rank.FOUR),
+            Card(Color.WHITE, Rank.FIVE),
+        ]
+        agent = BasicHeuristicAgent()
+        observation = engine.get_observation(0)
+        action = agent.act(observation)
+        result = engine.step(action)
+
+        rendered = render_self_play_turn(
+            turn_index=engine.turn_number,
+            player_id=0,
+            observation=observation,
+            action=action,
+            step_result=result,
+            engine=engine,
+            acting_agent=agent,
+        )
+
+        self.assertIn("Hint candidates:", rendered)
+        self.assertIn("Chosen hint:", rendered)
 
 
 if __name__ == "__main__":

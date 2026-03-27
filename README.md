@@ -27,6 +27,7 @@ Recent heuristic and evaluation progress:
 - A dedicated `TempoHeuristicAgent` focused on hint economy
 - A `ConventionTempoHeuristicAgent` hybrid that combines private conventions
   with tempo-aware hint spending
+- A `LargeTableHeuristicAgent` variant tuned for 5-player communication
 - Shared hint-priority infrastructure across heuristic agents
 - Player-count-aware baseline weighting in `BasicHeuristicAgent`
 - Lightweight development notes for tracking strategy discoveries over time
@@ -38,6 +39,10 @@ python -m venv .venv
 .venv\Scripts\activate
 python -m pip install -e .
 ```
+
+Important: activating `.venv` only switches Python environments. The
+`hanabi-demo-*` and `hanabi-evaluate` commands are created by
+`python -m pip install -e .`.
 
 For notebook work and other local development tooling:
 
@@ -80,8 +85,8 @@ report:
 hanabi-evaluate --players 2 3 4 5 --games 200 --json-output reports\benchmark.json
 ```
 
-The benchmark includes the basic, convention, tempo, and convention-tempo
-hybrid heuristic agents.
+The benchmark includes the basic, convention, tempo, convention-tempo hybrid,
+and large-table heuristic agents.
 
 Compare a new run against a previous saved report:
 
@@ -97,6 +102,14 @@ python -m hanabi_ai.tools.demo_convention_trace --game-seed 7
 python -m hanabi_ai.tools.evaluate_agents --players 2 --games 200
 python -m hanabi_ai.tools.evaluate_agents --players 2 3 4 5 --games 200 --json-output reports\benchmark.json
 python -m hanabi_ai.tools.evaluate_agents --players 2 3 4 5 --games 200 --compare-json reports\benchmark_previous.json --json-output reports\benchmark_current.json
+```
+
+If you want to run the tools without installing the package first, point Python
+at the `src` tree explicitly:
+
+```powershell
+$env:PYTHONPATH = "src"
+python -m hanabi_ai.tools.demo_convention_trace --game-seed 7
 ```
 
 ## Examples

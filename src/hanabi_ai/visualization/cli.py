@@ -271,10 +271,17 @@ def render_self_play_turn(
         "",
         "Chosen action:",
         f"  {render_action(action)}",
-        "",
-        render_step_result(step_result, acting_agent=acting_agent),
-        "",
-        "State after turn:",
-        render_game_state(engine),
     ]
+    if acting_agent is not None:
+        for note in acting_agent.explain_action_choice(observation, action):
+            lines.append(f"  {note}")
+    lines.extend(
+        [
+            "",
+            render_step_result(step_result, acting_agent=acting_agent),
+            "",
+            "State after turn:",
+            render_game_state(engine),
+        ]
+    )
     return "\n".join(lines)

@@ -9,6 +9,7 @@ from typing import Any, Callable, Sequence
 from hanabi_ai.agents.heuristic.basic import BasicHeuristicAgent
 from hanabi_ai.agents.heuristic.convention import ConventionHeuristicAgent
 from hanabi_ai.agents.heuristic.convention_tempo import ConventionTempoHeuristicAgent
+from hanabi_ai.agents.heuristic.large_table import LargeTableHeuristicAgent
 from hanabi_ai.agents.heuristic.tempo import TempoHeuristicAgent
 from hanabi_ai.agents.random import RandomAgent
 from hanabi_ai.training.self_play import SelfPlayEvaluation, evaluate_self_play
@@ -107,6 +108,9 @@ def build_benchmark_report(
         "ConventionTempoHeuristicAgent": (
             lambda player_id, game_index, player_count: ConventionTempoHeuristicAgent()
         ),
+        "LargeTableHeuristicAgent": (
+            lambda player_id, game_index, player_count: LargeTableHeuristicAgent()
+        ),
         "TempoHeuristicAgent": lambda player_id, game_index, player_count: TempoHeuristicAgent(),
         "RandomAgent": (
             lambda player_id, game_index, player_count: RandomAgent(
@@ -166,6 +170,22 @@ def build_benchmark_report(
                     "ConventionTempo vs Basic": build_comparison_dict(
                         evaluations["ConventionTempoHeuristicAgent"],
                         evaluations["BasicHeuristicAgent"],
+                    ),
+                    "LargeTable vs ConventionTempo": build_comparison_dict(
+                        evaluations["LargeTableHeuristicAgent"],
+                        evaluations["ConventionTempoHeuristicAgent"],
+                    ),
+                    "LargeTable vs Tempo": build_comparison_dict(
+                        evaluations["LargeTableHeuristicAgent"],
+                        evaluations["TempoHeuristicAgent"],
+                    ),
+                    "LargeTable vs Basic": build_comparison_dict(
+                        evaluations["LargeTableHeuristicAgent"],
+                        evaluations["BasicHeuristicAgent"],
+                    ),
+                    "LargeTable vs Random": build_comparison_dict(
+                        evaluations["LargeTableHeuristicAgent"],
+                        evaluations["RandomAgent"],
                     ),
                     "ConventionTempo vs Random": build_comparison_dict(
                         evaluations["ConventionTempoHeuristicAgent"],

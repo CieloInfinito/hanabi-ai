@@ -9,6 +9,9 @@ if __name__ == "__main__" and (__package__ is None or __package__ == ""):
         sys.path.insert(0, str(SRC_PATH))
 
 from hanabi_ai.agents.heuristic.base import BaseHeuristicAgent, _HintPriorityWeights
+from hanabi_ai.agents.heuristic._scoring import HintScore
+from hanabi_ai.game.actions import HintColorAction, HintRankAction
+from hanabi_ai.game.observation import ObservedHand, PlayerObservation
 
 
 class BasicHeuristicAgent(BaseHeuristicAgent):
@@ -58,6 +61,48 @@ class BasicHeuristicAgent(BaseHeuristicAgent):
             critical_playable=1,
             turn_distance_penalty=1,
         )
+
+    def _hint_priority_adjustment(
+        self,
+        *,
+        observation: PlayerObservation,
+        observed_hand: ObservedHand,
+        hint_action: HintColorAction | HintRankAction,
+        score: HintScore,
+        follow_on_value: int,
+        receiver_needs_help: bool,
+        immediate_receiver_bonus: int,
+        near_term_receiver_bonus: int,
+        actionable_hint_bonus: int,
+        critical_playable_hits: int,
+        turn_distance: int,
+    ) -> int:
+        player_count = len(observation.other_player_hands) + 1
+        if player_count < 4:
+            return 0
+
+        guaranteed_play_hits = score[0]
+        playable_hits = score[1]
+        useful_hits = score[5]
+        information_gain = score[6]
+        receiver_under_pressure = self._receiver_under_pressure(
+            observation,
+            observed_hand.player_id,
+        )
+
+        if not receiver_under_pressure or turn_distance > 2:
+            return 0
+
+        if guaranteed_play_hits >= 1:
+            return 3
+
+        if playable_hits >= 1 and information_gain >= 2:
+            return 2
+
+        if playable_hits >= 1 and useful_hits >= 1:
+            return 1
+
+        return 0
 
 
 if __name__ == "__main__":
