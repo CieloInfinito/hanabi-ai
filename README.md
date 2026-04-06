@@ -117,7 +117,7 @@ Current agent lineup:
 - `LargeTableHeuristicAgent`: compatibility wrapper for the current 5-player
   `ConventionTempo` policy
 
-In practice, `ConventionTempoHeuristicAgent` is the main “strong heuristic”
+In practice, `ConventionTempoHeuristicAgent` is the main "strong heuristic"
 agent right now, and `LargeTableHeuristicAgent` remains useful as a stable
 named slot for larger-table experiments.
 
@@ -167,11 +167,12 @@ Run one module:
 - [Project Architecture](docs/architecture.md)
 - [Heuristic Agents](docs/heuristic_agents.md)
 - [Agent Development Notes](docs/agent_notes.md)
+- [Heuristic Search Closure](docs/heuristic_search_closure.md)
 - [Testing Guide](docs/testing.md)
 
 ## Current Direction
 
-The current focus is not “add more infrastructure at any cost”. The repo
+The current focus is not "add more infrastructure at any cost". The repo
 already has the core environment. The highest-value work now is:
 
 - improving heuristic policy quality
