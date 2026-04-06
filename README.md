@@ -20,8 +20,15 @@ Today the repository already includes a complete vertical slice:
 - text-based visualization for debugging and traces
 - tests for engine, agents, tooling, and rendering
 
-The project is not an RL system yet. It is currently strongest as a clean
-Hanabi environment plus a growing heuristic research harness.
+The project is still strongest as a clean Hanabi environment plus a heuristic
+research harness, but it now also includes an initial RL scaffold.
+
+Current lightweight RL defaults are tuned for stability rather than raw speed:
+the current pure Python MLP uses `hidden_size=48`, behavior cloning defaults to
+`8` teacher episodes and `4` epochs, and warm-start REINFORCE defaults to a
+smaller learning rate with shaped-return discounting. The RL track is still
+experimental and currently remains well below `ConventionTempoHeuristicAgent`
+in self-play quality.
 
 ## Start Here
 
@@ -62,6 +69,20 @@ Benchmark the current agents:
 
 ```powershell
 hanabi-evaluate --players 2 3 4 5 --games 200
+```
+
+Run a minimal REINFORCE smoke training loop:
+
+```powershell
+hanabi-train-behavior-cloning --players 2 --episodes 8 --epochs 4
+```
+
+```powershell
+hanabi-train-reinforce --players 2 --episodes 10 --iterations 3
+```
+
+```powershell
+hanabi-train-warm-start --players 2 --bc-episodes 8 --bc-epochs 4 --rl-iterations 3 --rl-episodes 10
 ```
 
 Save a benchmark report:
@@ -168,6 +189,7 @@ Run one module:
 - [Heuristic Agents](docs/heuristic_agents.md)
 - [Agent Development Notes](docs/agent_notes.md)
 - [Heuristic Search Closure](docs/heuristic_search_closure.md)
+- [Reinforcement Learning](docs/reinforcement_learning.md)
 - [Testing Guide](docs/testing.md)
 
 ## Current Direction

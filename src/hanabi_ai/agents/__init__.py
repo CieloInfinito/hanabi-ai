@@ -7,6 +7,9 @@ from hanabi_ai.agents.heuristic.convention import ConventionHeuristicAgent
 from hanabi_ai.agents.heuristic.large_table import LargeTableHeuristicAgent
 from hanabi_ai.agents.heuristic.tempo import TempoHeuristicAgent
 from hanabi_ai.agents.random import RandomAgent
+from hanabi_ai.agents.rl.agent import RLPolicyAgent
+from hanabi_ai.agents.rl.encoding import LegalActionIndexer, ObservationVectorEncoder
+from hanabi_ai.agents.rl.policy import LinearSoftmaxPolicy
 
 __all__ = [
     "PublicBeliefState",
@@ -16,4 +19,8 @@ __all__ = [
     "LargeTableHeuristicAgent",
     "TempoHeuristicAgent",
     "RandomAgent",
+    "LegalActionIndexer",
+    "LinearSoftmaxPolicy",
+    "ObservationVectorEncoder",
+    "RLPolicyAgent",
 ]
