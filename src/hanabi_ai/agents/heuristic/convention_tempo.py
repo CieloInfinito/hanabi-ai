@@ -89,6 +89,36 @@ class ConventionTempoHeuristicAgent(_ConventionHeuristicMixin, TempoHeuristicAge
             and information_gain >= 4
         )
 
+    @staticmethod
+    def _five_player_hint_ranking_score(
+        *,
+        score: HintScore,
+        weighted_bonus: int,
+        follow_on_value: int,
+        receiver_needs_help: int,
+        immediate_receiver_bonus: int,
+        near_term_receiver_bonus: int,
+        actionable_hint_bonus: int,
+        critical_playable_hits: int,
+    ) -> tuple[int, ...]:
+        return (
+            score[0],
+            score[1],
+            weighted_bonus,
+            critical_playable_hits,
+            follow_on_value,
+            near_term_receiver_bonus,
+            immediate_receiver_bonus,
+            actionable_hint_bonus,
+            score[5],
+            score[6],
+            score[2],
+            score[3],
+            receiver_needs_help,
+            score[7],
+            score[8],
+        )
+
     def _should_prefer_discard_over_hint(
         self,
         observation: PlayerObservation,
@@ -175,6 +205,51 @@ class ConventionTempoHeuristicAgent(_ConventionHeuristicMixin, TempoHeuristicAge
             bonus += 1
 
         return base_adjustment + bonus
+
+    def _hint_priority(
+        self,
+        observation: PlayerObservation,
+        observed_hand: ObservedHand,
+        hint_action: HintColorAction | HintRankAction,
+        score: HintScore,
+    ) -> tuple[tuple[int, ...], int, int, int, int, int, int, int]:
+        priority = super()._hint_priority(
+            observation,
+            observed_hand,
+            hint_action,
+            score,
+        )
+        player_count = len(observation.other_player_hands) + 1
+        if not self._is_five_player_game(player_count):
+            return priority
+
+        weighted_bonus = priority[1]
+        follow_on_value = priority[2]
+        receiver_needs_help = priority[3]
+        immediate_receiver_bonus = priority[4]
+        near_term_receiver_bonus = priority[5]
+        actionable_hint_bonus = priority[6]
+        critical_playable_hits = priority[7]
+
+        return (
+            self._five_player_hint_ranking_score(
+                score=score,
+                weighted_bonus=weighted_bonus,
+                follow_on_value=follow_on_value,
+                receiver_needs_help=receiver_needs_help,
+                immediate_receiver_bonus=immediate_receiver_bonus,
+                near_term_receiver_bonus=near_term_receiver_bonus,
+                actionable_hint_bonus=actionable_hint_bonus,
+                critical_playable_hits=critical_playable_hits,
+            ),
+            weighted_bonus,
+            follow_on_value,
+            receiver_needs_help,
+            immediate_receiver_bonus,
+            near_term_receiver_bonus,
+            actionable_hint_bonus,
+            critical_playable_hits,
+        )
 
 
 if __name__ == "__main__":
