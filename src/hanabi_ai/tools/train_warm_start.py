@@ -44,10 +44,16 @@ def parse_args() -> argparse.Namespace:
         help="Episodes per REINFORCE iteration.",
     )
     parser.add_argument(
-        "--rl-learning-rate",
+        "--rl-actor-learning-rate",
         type=float,
         default=0.002,
-        help="REINFORCE learning rate.",
+        help="Policy learning rate during REINFORCE.",
+    )
+    parser.add_argument(
+        "--rl-critic-learning-rate",
+        type=float,
+        default=0.002,
+        help="Value-head learning rate during REINFORCE.",
     )
     parser.add_argument(
         "--rl-discount-factor",
@@ -82,7 +88,8 @@ def main() -> None:
             cloning_learning_rate=args.bc_learning_rate,
             reinforce_iterations=args.rl_iterations,
             reinforce_episode_count=args.rl_episodes,
-            reinforce_learning_rate=args.rl_learning_rate,
+            reinforce_actor_learning_rate=args.rl_actor_learning_rate,
+            reinforce_critic_learning_rate=args.rl_critic_learning_rate,
             reinforce_discount_factor=args.rl_discount_factor,
             reinforce_final_score_bonus_weight=args.rl_final_score_bonus_weight,
             seed_base=args.seed_base,
@@ -98,7 +105,8 @@ def main() -> None:
         f"min={cloning_stats.min_score} "
         f"max={cloning_stats.max_score} "
         f"samples={cloning_stats.sample_count} "
-        f"accuracy={cloning_stats.training_accuracy:.3%}"
+        f"train_acc={cloning_stats.training_accuracy:.3%} "
+        f"val_acc={cloning_stats.validation_accuracy:.3%}"
     )
 
     for iteration_index, reinforce_stats in enumerate(stats.reinforce_stats, start=1):

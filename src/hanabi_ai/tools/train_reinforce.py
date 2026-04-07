@@ -16,7 +16,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--players", type=int, default=2, help="Number of players.")
     parser.add_argument("--episodes", type=int, default=20, help="Episodes per iteration.")
     parser.add_argument("--iterations", type=int, default=5, help="Training iterations.")
-    parser.add_argument("--learning-rate", type=float, default=0.002, help="REINFORCE learning rate.")
+    parser.add_argument("--actor-learning-rate", type=float, default=0.002, help="Policy learning rate.")
+    parser.add_argument("--critic-learning-rate", type=float, default=0.002, help="Value-head learning rate.")
     parser.add_argument("--discount-factor", type=float, default=0.95, help="Discount factor for shaped returns.")
     parser.add_argument("--final-score-bonus-weight", type=float, default=0.5, help="Weight of the final score bonus added to the last transition.")
     parser.add_argument("--seed-base", type=int, default=0, help="Base game seed.")
@@ -45,7 +46,8 @@ def main() -> None:
             config=ReinforceConfig(
                 player_count=args.players,
                 episode_count=args.episodes,
-                learning_rate=args.learning_rate,
+                actor_learning_rate=args.actor_learning_rate,
+                critic_learning_rate=args.critic_learning_rate,
                 discount_factor=args.discount_factor,
                 final_score_bonus_weight=args.final_score_bonus_weight,
                 seed_base=args.seed_base + (iteration_index * args.episodes),

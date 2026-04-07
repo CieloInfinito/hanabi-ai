@@ -17,6 +17,7 @@ class PolicyGradientSample:
     legal_action_indices: tuple[int, ...]
     chosen_action_index: int
     advantage: float
+    action_probability: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -134,6 +135,8 @@ class LinearSoftmaxPolicy:
         samples: tuple[PolicyGradientSample, ...],
         *,
         learning_rate: float,
+        entropy_coefficient: float = 0.0,
+        gradient_clip: float | None = None,
     ) -> None:
         for sample in samples:
             hidden_pre, hidden = self._hidden_forward(sample.features)
@@ -151,6 +154,24 @@ class LinearSoftmaxPolicy:
                 )
                 for action_index in sample.legal_action_indices
             }
+            if entropy_coefficient > 0.0:
+                entropy_signals = self._entropy_output_signals(
+                    probabilities=probabilities,
+                    legal_action_indices=sample.legal_action_indices,
+                )
+                output_signals = {
+                    action_index: output_signals[action_index]
+                    + (entropy_coefficient * entropy_signals[action_index])
+                    for action_index in sample.legal_action_indices
+                }
+            if gradient_clip is not None:
+                output_signals = {
+                    action_index: max(
+                        -gradient_clip,
+                        min(gradient_clip, signal),
+                    )
+                    for action_index, signal in output_signals.items()
+                }
             self._apply_policy_output_update(
                 hidden,
                 output_signals=output_signals,
@@ -367,3 +388,22 @@ class LinearSoftmaxPolicy:
                 self._hidden_weights[hidden_index][feature_index] += (
                     learning_rate * signal * feature_value
                 )
+
+    def _entropy_output_signals(
+        self,
+        *,
+        probabilities: dict[int, float],
+        legal_action_indices: tuple[int, ...],
+    ) -> dict[int, float]:
+        entropy = -sum(
+            probability * math.log(max(probability, 1e-12))
+            for probability in probabilities.values()
+        )
+        expected_neg_log = {
+            action_index: -math.log(max(probabilities[action_index], 1e-12)) - entropy
+            for action_index in legal_action_indices
+        }
+        return {
+            action_index: probabilities[action_index] * expected_neg_log[action_index]
+            for action_index in legal_action_indices
+        }

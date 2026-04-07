@@ -63,6 +63,8 @@ class BehaviorCloningTrainingTests(unittest.TestCase):
         self.assertEqual(stats.episode_count, 2)
         self.assertGreater(stats.sample_count, 0)
         self.assertGreaterEqual(stats.training_accuracy, 0.0)
+        self.assertGreaterEqual(stats.validation_sample_count, 0)
+        self.assertGreaterEqual(stats.validation_accuracy, 0.0)
 
 
 if __name__ == "__main__":

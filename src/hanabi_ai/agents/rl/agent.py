@@ -14,6 +14,7 @@ class RLTransitionRecorder:
     features: list[tuple[float, ...]]
     legal_action_indices: list[tuple[int, ...]]
     chosen_action_indices: list[int]
+    chosen_action_probabilities: list[float]
 
 
 class RLPolicyAgent:
@@ -51,6 +52,7 @@ class RLPolicyAgent:
             self._recorder.features.append(features)
             self._recorder.legal_action_indices.append(legal_action_indices)
             self._recorder.chosen_action_indices.append(decision.action_index)
+            self._recorder.chosen_action_probabilities.append(decision.probability)
         return self._action_indexer.action_for_index(
             decision.action_index,
             current_player=observation.current_player,

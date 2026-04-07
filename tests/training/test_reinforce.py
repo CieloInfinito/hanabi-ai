@@ -22,7 +22,8 @@ class ReinforceTrainingTests(unittest.TestCase):
     def test_reinforce_config_defaults_match_tuned_values(self) -> None:
         config = ReinforceConfig(player_count=2, episode_count=3)
 
-        self.assertEqual(config.learning_rate, 0.002)
+        self.assertEqual(config.actor_learning_rate, 0.002)
+        self.assertEqual(config.critic_learning_rate, 0.002)
         self.assertEqual(config.discount_factor, 0.95)
         self.assertEqual(config.final_score_bonus_weight, 0.5)
 
@@ -47,7 +48,8 @@ class ReinforceTrainingTests(unittest.TestCase):
             config=ReinforceConfig(
                 player_count=2,
                 episode_count=3,
-                learning_rate=0.02,
+                actor_learning_rate=0.02,
+                critic_learning_rate=0.01,
                 seed_base=20,
                 policy_seed=10,
             ),

@@ -16,6 +16,7 @@ class BehaviorCloningConfig:
     learning_rate: float = 0.05
     epochs: int = 4
     seed_base: int = 0
+    validation_split: float = 0.2
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,6 +27,8 @@ class BehaviorCloningStats:
     min_score: int
     max_score: int
     training_accuracy: float
+    validation_sample_count: int
+    validation_accuracy: float
 
 
 def collect_behavior_cloning_samples(
@@ -79,6 +82,8 @@ def collect_behavior_cloning_samples(
             min_score=min(scores),
             max_score=max(scores),
             training_accuracy=0.0,
+            validation_sample_count=0,
+            validation_accuracy=0.0,
         ),
     )
 
@@ -97,8 +102,19 @@ def run_behavior_cloning_iteration(
         action_indexer=action_indexer,
         seed_base=config.seed_base,
     )
+    if not 0.0 <= config.validation_split < 1.0:
+        raise ValueError("validation_split must be between 0.0 and 1.0.")
+
+    validation_count = int(len(samples) * config.validation_split)
+    if validation_count > 0:
+        training_samples = samples[:-validation_count]
+        validation_samples = samples[-validation_count:]
+    else:
+        training_samples = samples
+        validation_samples = ()
+
     policy.apply_behavior_cloning(
-        samples,
+        training_samples,
         learning_rate=config.learning_rate,
         epochs=config.epochs,
     )
@@ -108,5 +124,7 @@ def run_behavior_cloning_iteration(
         average_score=stats.average_score,
         min_score=stats.min_score,
         max_score=stats.max_score,
-        training_accuracy=policy.behavior_cloning_accuracy(samples),
+        training_accuracy=policy.behavior_cloning_accuracy(training_samples),
+        validation_sample_count=len(validation_samples),
+        validation_accuracy=policy.behavior_cloning_accuracy(validation_samples),
     )

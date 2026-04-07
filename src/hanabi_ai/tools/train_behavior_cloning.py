@@ -47,7 +47,8 @@ def main() -> None:
         f"min={stats.min_score} "
         f"max={stats.max_score} "
         f"samples={stats.sample_count} "
-        f"accuracy={stats.training_accuracy:.3%}"
+        f"train_acc={stats.training_accuracy:.3%} "
+        f"val_acc={stats.validation_accuracy:.3%}"
     )
 
 

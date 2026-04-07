@@ -18,12 +18,16 @@ from hanabi_ai.game.engine import EngineStepResult, HanabiGameEngine
 class ReinforceConfig:
     player_count: int
     episode_count: int
-    learning_rate: float = 0.002
+    actor_learning_rate: float = 0.002
+    critic_learning_rate: float = 0.002
     reward_scale: float = 1.0 / 25.0
     discount_factor: float = 0.95
     strike_penalty: float = 1.0
     hint_recovery_bonus: float = 0.2
     final_score_bonus_weight: float = 0.5
+    normalize_advantages: bool = True
+    entropy_coefficient: float = 0.01
+    gradient_clip: float | None = 1.0
     seed_base: int = 0
     policy_seed: int = 0
     greedy_evaluation: bool = False
@@ -83,7 +87,12 @@ def run_reinforce_iteration(
             player_count=config.player_count,
             seed=config.seed_base + episode_index,
         )
-        recorder = RLTransitionRecorder(features=[], legal_action_indices=[], chosen_action_indices=[])
+        recorder = RLTransitionRecorder(
+            features=[],
+            legal_action_indices=[],
+            chosen_action_indices=[],
+            chosen_action_probabilities=[],
+        )
         recorder_rewards: list[float] = []
         agents = [
             RLPolicyAgent(
@@ -131,10 +140,17 @@ def run_reinforce_iteration(
     samples: list[PolicyGradientSample] = []
     value_samples: list[ValueRegressionSample] = []
     for recorder, returns, _final_score in recorded_episodes:
-        for features, legal_action_indices, chosen_action_index, target_return in zip(
+        for (
+            features,
+            legal_action_indices,
+            chosen_action_index,
+            chosen_action_probability,
+            target_return,
+        ) in zip(
             recorder.features,
             recorder.legal_action_indices,
             recorder.chosen_action_indices,
+            recorder.chosen_action_probabilities,
             returns,
             strict=True,
         ):
@@ -148,6 +164,7 @@ def run_reinforce_iteration(
                     legal_action_indices=legal_action_indices,
                     chosen_action_index=chosen_action_index,
                     advantage=advantage,
+                    action_probability=chosen_action_probability,
                 )
             )
             value_samples.append(
@@ -157,14 +174,31 @@ def run_reinforce_iteration(
                 )
             )
 
+    if samples and config.normalize_advantages:
+        normalized_advantages = _normalize_advantages(
+            tuple(sample.advantage for sample in samples)
+        )
+        samples = [
+            PolicyGradientSample(
+                features=sample.features,
+                legal_action_indices=sample.legal_action_indices,
+                chosen_action_index=sample.chosen_action_index,
+                advantage=normalized_advantages[sample_index],
+                action_probability=sample.action_probability,
+            )
+            for sample_index, sample in enumerate(samples)
+        ]
+
     if samples:
         policy.apply_policy_gradient(
             tuple(samples),
-            learning_rate=config.learning_rate,
+            learning_rate=config.actor_learning_rate,
+            entropy_coefficient=config.entropy_coefficient,
+            gradient_clip=config.gradient_clip,
         )
         policy.apply_value_regression(
             tuple(value_samples),
-            learning_rate=config.learning_rate,
+            learning_rate=config.critic_learning_rate,
         )
 
     average_return = sum(scores) / config.episode_count * config.reward_scale
@@ -227,3 +261,19 @@ def _discounted_returns(
         returns_reversed.append(running_return)
     returns_reversed.reverse()
     return tuple(returns_reversed)
+
+
+def _normalize_advantages(advantages: tuple[float, ...]) -> tuple[float, ...]:
+    if not advantages:
+        return ()
+    mean_advantage = sum(advantages) / len(advantages)
+    variance = sum(
+        (advantage - mean_advantage) ** 2 for advantage in advantages
+    ) / len(advantages)
+    standard_deviation = variance ** 0.5
+    if standard_deviation < 1e-8:
+        return tuple(advantage - mean_advantage for advantage in advantages)
+    return tuple(
+        (advantage - mean_advantage) / standard_deviation
+        for advantage in advantages
+    )

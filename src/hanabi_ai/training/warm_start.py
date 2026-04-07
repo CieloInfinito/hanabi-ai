@@ -23,7 +23,8 @@ class WarmStartConfig:
     cloning_learning_rate: float
     reinforce_iterations: int
     reinforce_episode_count: int
-    reinforce_learning_rate: float = 0.002
+    reinforce_actor_learning_rate: float = 0.002
+    reinforce_critic_learning_rate: float = 0.002
     reinforce_discount_factor: float = 0.95
     reinforce_final_score_bonus_weight: float = 0.5
     seed_base: int = 0
@@ -73,7 +74,8 @@ def run_warm_started_reinforce(
             config=ReinforceConfig(
                 player_count=config.player_count,
                 episode_count=config.reinforce_episode_count,
-                learning_rate=config.reinforce_learning_rate,
+                actor_learning_rate=config.reinforce_actor_learning_rate,
+                critic_learning_rate=config.reinforce_critic_learning_rate,
                 discount_factor=config.reinforce_discount_factor,
                 final_score_bonus_weight=config.reinforce_final_score_bonus_weight,
                 seed_base=(
