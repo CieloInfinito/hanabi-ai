@@ -51,6 +51,7 @@ class EvaluateAgentsToolTests(unittest.TestCase):
                 "ConventionHeuristicAgent",
                 "ConventionTempoHeuristicAgent",
                 "LargeTableHeuristicAgent",
+                "SearchHeuristicAgent",
                 "TempoHeuristicAgent",
                 "RandomAgent",
             },
@@ -61,6 +62,11 @@ class EvaluateAgentsToolTests(unittest.TestCase):
             self.assertIn("Tempo vs Random", result_set["comparisons"])
             self.assertIn("ConventionTempo vs Tempo", result_set["comparisons"])
             self.assertIn("LargeTable vs ConventionTempo", result_set["comparisons"])
+            self.assertIn("perfect_game_rate", result_set["ranking"][0])
+            self.assertIn(
+                "perfect_game_rate_delta",
+                result_set["comparisons"]["Tempo vs Random"],
+            )
             self.assertEqual(
                 set(result_set["evaluations"]),
                 {
@@ -68,6 +74,7 @@ class EvaluateAgentsToolTests(unittest.TestCase):
                     "ConventionHeuristicAgent",
                     "ConventionTempoHeuristicAgent",
                     "LargeTableHeuristicAgent",
+                    "SearchHeuristicAgent",
                     "TempoHeuristicAgent",
                     "RandomAgent",
                 },
@@ -82,6 +89,7 @@ class EvaluateAgentsToolTests(unittest.TestCase):
         self.assertIn("=== 2-Player Table ===", rendered)
         self.assertIn("Ranking", rendered)
         self.assertIn("Comparisons", rendered)
+        self.assertIn("perfect_game_rate", rendered)
         self.assertIn("=== Aggregate Ranking Across Player Counts ===", rendered)
 
     def test_write_json_report_writes_serialized_report(self) -> None:
@@ -169,6 +177,7 @@ class EvaluateAgentsToolTests(unittest.TestCase):
 
         self.assertIn("=== Delta vs reports\\previous.json ===", rendered)
         self.assertIn("2-Player Delta", rendered)
+        self.assertIn("perfect_game_rate_delta", rendered)
         self.assertIn("Aggregate average score delta by agent", rendered)
 
 

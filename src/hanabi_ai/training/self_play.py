@@ -71,6 +71,10 @@ class SelfPlayEvaluation:
     loss_rate: float
     score_at_least_10_rate: float
     score_at_least_15_rate: float
+    score_at_least_20_rate: float
+    score_at_least_24_rate: float
+    average_gap_to_25: float
+    perfect_game_rate: float
     score_distribution: tuple[tuple[int, int], ...]
 
 
@@ -265,6 +269,10 @@ def evaluate_self_play(
         loss_rate=losses / game_count,
         score_at_least_10_rate=sum(score >= 10 for score in scores) / game_count,
         score_at_least_15_rate=sum(score >= 15 for score in scores) / game_count,
+        score_at_least_20_rate=sum(score >= 20 for score in scores) / game_count,
+        score_at_least_24_rate=sum(score >= 24 for score in scores) / game_count,
+        average_gap_to_25=sum(25 - score for score in scores) / game_count,
+        perfect_game_rate=sum(score == 25 for score in scores) / game_count,
         score_distribution=score_distribution,
     )
 

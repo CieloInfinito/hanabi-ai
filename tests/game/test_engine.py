@@ -226,5 +226,18 @@ class HanabiGameEngineTests(unittest.TestCase):
                 )
             )
 
+    def test_clone_returns_independent_engine_copy(self) -> None:
+        # Verifies that engine cloning provides an isolated simulation copy.
+        engine = HanabiGameEngine(player_count=2, seed=21)
+        cloned_engine = engine.clone()
+
+        self.assertEqual(cloned_engine.export_state(), engine.export_state())
+
+        cloned_engine.hint_tokens = 0
+        cloned_engine.discard_pile.append(Card(Color.RED, Rank.FIVE))
+
+        self.assertNotEqual(cloned_engine.hint_tokens, engine.hint_tokens)
+        self.assertNotIn(Card(Color.RED, Rank.FIVE), engine.discard_pile)
+
 if __name__ == "__main__":
     unittest.main()

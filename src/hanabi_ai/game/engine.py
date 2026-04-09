@@ -70,6 +70,22 @@ class EngineStepResult:
     game_over: bool
 
 
+@dataclass(frozen=True, slots=True)
+class EngineState:
+    player_count: int
+    hands: tuple[tuple[Card, ...], ...]
+    knowledge_by_player: tuple[tuple[CardKnowledge, ...], ...]
+    deck: tuple[Card, ...]
+    discard_pile: tuple[Card, ...]
+    fireworks: dict[Color, int]
+    hint_tokens: int
+    strike_tokens: int
+    current_player: int
+    turn_number: int
+    final_turns_remaining: int | None
+    history: tuple[TurnRecord, ...]
+
+
 class HanabiGameEngine:
     """
     Omniscient Hanabi game state and transition logic.
@@ -262,6 +278,66 @@ class HanabiGameEngine:
         Return the current Hanabi score.
         """
         return score_fireworks(self.fireworks)
+
+    def export_state(self) -> EngineState:
+        """
+        Return a detached snapshot of the current engine state.
+        """
+        return EngineState(
+            player_count=self.player_count,
+            hands=tuple(tuple(hand) for hand in self.hands),
+            knowledge_by_player=tuple(
+                tuple(hand_knowledge) for hand_knowledge in self.knowledge_by_player
+            ),
+            deck=tuple(self.deck),
+            discard_pile=tuple(self.discard_pile),
+            fireworks=dict(self.fireworks),
+            hint_tokens=self.hint_tokens,
+            strike_tokens=self.strike_tokens,
+            current_player=self.current_player,
+            turn_number=self.turn_number,
+            final_turns_remaining=self.final_turns_remaining,
+            history=tuple(self.history),
+        )
+
+    @classmethod
+    def from_state(
+        cls,
+        state: EngineState,
+        *,
+        seed: int | None = None,
+        rng: Random | None = None,
+    ) -> HanabiGameEngine:
+        """
+        Build an engine directly from a previously exported state snapshot.
+        """
+        if rng is not None and seed is not None:
+            raise ValueError("Provide either seed or rng, but not both.")
+
+        hand_size_for_player_count(state.player_count)
+        engine = cls.__new__(cls)
+        engine.player_count = state.player_count
+        engine._rng = rng if rng is not None else Random(seed)
+        engine.hands = [list(hand) for hand in state.hands]
+        engine.knowledge_by_player = [
+            list(hand_knowledge) for hand_knowledge in state.knowledge_by_player
+        ]
+        engine.deck = list(state.deck)
+        engine.discard_pile = list(state.discard_pile)
+        engine.fireworks = dict(state.fireworks)
+        engine.hint_tokens = state.hint_tokens
+        engine.strike_tokens = state.strike_tokens
+        engine.current_player = state.current_player
+        engine.turn_number = state.turn_number
+        engine.final_turns_remaining = state.final_turns_remaining
+        engine.history = list(state.history)
+        return engine
+
+    def clone(self) -> HanabiGameEngine:
+        """
+        Return a simulation-safe copy of the current engine.
+        """
+        return self.from_state(self.export_state(), rng=Random())
 
     def _handle_play_action(
         self, player_id: int, action: PlayAction

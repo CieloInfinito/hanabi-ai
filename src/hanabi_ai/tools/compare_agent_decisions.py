@@ -7,6 +7,7 @@ from hanabi_ai.agents.heuristic.convention import ConventionHeuristicAgent
 from hanabi_ai.agents.heuristic.convention_tempo import ConventionTempoHeuristicAgent
 from hanabi_ai.agents.heuristic.large_table import LargeTableHeuristicAgent
 from hanabi_ai.agents.heuristic.tempo import TempoHeuristicAgent
+from hanabi_ai.agents.search_agent import SearchHeuristicAgent
 from hanabi_ai.game.actions import normalize_agent_decision
 from hanabi_ai.game.engine import HanabiGameEngine
 from hanabi_ai.visualization.cli import render_action
@@ -44,6 +45,7 @@ def _build_agent(name: str):
         "tempo": TempoHeuristicAgent,
         "convention-tempo": ConventionTempoHeuristicAgent,
         "large-table": LargeTableHeuristicAgent,
+        "search": SearchHeuristicAgent,
     }
     if normalized not in mapping:
         raise ValueError(f"Unknown agent '{name}'.")

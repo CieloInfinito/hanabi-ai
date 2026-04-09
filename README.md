@@ -124,6 +124,13 @@ Compare two heuristic agents decision-by-decision on one seed:
 hanabi-compare-decisions --players 5 --game-seed 7 --left-agent convention --right-agent convention-tempo
 ```
 
+Analyze turns where the search agent sees better alternatives than the
+heuristic baseline:
+
+```powershell
+hanabi-analyze-search --players 2 --games 10
+```
+
 If you want to run modules directly without installing the package:
 
 ```powershell
@@ -215,6 +222,7 @@ Run one module:
 - [Project Architecture](docs/architecture.md)
 - [Heuristic Agents](docs/heuristic_agents.md)
 - [Agent Development Notes](docs/agent_notes.md)
+- [Search Foundations](docs/search_foundations.md)
 - [Heuristic Search Closure](docs/heuristic_search_closure.md)
 - [Reinforcement Learning](docs/reinforcement_learning.md)
 - [Testing Guide](docs/testing.md)

@@ -130,6 +130,13 @@ class SelfPlayTests(unittest.TestCase):
         self.assertLessEqual(evaluation.score_at_least_10_rate, 1.0)
         self.assertGreaterEqual(evaluation.score_at_least_15_rate, 0.0)
         self.assertLessEqual(evaluation.score_at_least_15_rate, 1.0)
+        self.assertGreaterEqual(evaluation.score_at_least_20_rate, 0.0)
+        self.assertLessEqual(evaluation.score_at_least_20_rate, 1.0)
+        self.assertGreaterEqual(evaluation.score_at_least_24_rate, 0.0)
+        self.assertLessEqual(evaluation.score_at_least_24_rate, 1.0)
+        self.assertGreaterEqual(evaluation.average_gap_to_25, 0.0)
+        self.assertGreaterEqual(evaluation.perfect_game_rate, 0.0)
+        self.assertLessEqual(evaluation.perfect_game_rate, 1.0)
         self.assertEqual(sum(count for _, count in evaluation.score_distribution), 5)
 
     def test_evaluate_self_play_shows_heuristic_beating_random_baseline(self) -> None:

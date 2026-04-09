@@ -12,6 +12,7 @@ from hanabi_ai.agents.heuristic.convention_tempo import ConventionTempoHeuristic
 from hanabi_ai.agents.heuristic.large_table import LargeTableHeuristicAgent
 from hanabi_ai.agents.heuristic.tempo import TempoHeuristicAgent
 from hanabi_ai.agents.random import RandomAgent
+from hanabi_ai.agents.search_agent import SearchHeuristicAgent
 from hanabi_ai.training.self_play import SelfPlayEvaluation, evaluate_self_play
 
 AgentFactory = Callable[[int, int, int], object]
@@ -20,6 +21,7 @@ AGENT_ORDER = (
     "ConventionHeuristicAgent",
     "ConventionTempoHeuristicAgent",
     "LargeTableHeuristicAgent",
+    "SearchHeuristicAgent",
     "TempoHeuristicAgent",
     "RandomAgent",
 )
@@ -41,8 +43,11 @@ COMPARISON_PAIRS = (
     ),
     ("LargeTable vs Tempo", "LargeTableHeuristicAgent", "TempoHeuristicAgent"),
     ("LargeTable vs Basic", "LargeTableHeuristicAgent", "BasicHeuristicAgent"),
+    ("Search vs ConventionTempo", "SearchHeuristicAgent", "ConventionTempoHeuristicAgent"),
+    ("Search vs Basic", "SearchHeuristicAgent", "BasicHeuristicAgent"),
     ("LargeTable vs Random", "LargeTableHeuristicAgent", "RandomAgent"),
     ("ConventionTempo vs Random", "ConventionTempoHeuristicAgent", "RandomAgent"),
+    ("Search vs Random", "SearchHeuristicAgent", "RandomAgent"),
     ("Tempo vs Basic", "TempoHeuristicAgent", "BasicHeuristicAgent"),
     ("Tempo vs Random", "TempoHeuristicAgent", "RandomAgent"),
 )
@@ -197,6 +202,9 @@ def _build_agent_factories(agent_seed_base: int) -> dict[str, AgentFactory]:
         "LargeTableHeuristicAgent": (
             lambda player_id, game_index, player_count: LargeTableHeuristicAgent()
         ),
+        "SearchHeuristicAgent": (
+            lambda player_id, game_index, player_count: SearchHeuristicAgent()
+        ),
         "TempoHeuristicAgent": (
             lambda player_id, game_index, player_count: TempoHeuristicAgent()
         ),
@@ -255,12 +263,14 @@ def build_agent_ranking(
             "agent": name,
             "average_score": evaluation.average_score,
             "score_at_least_15_rate": evaluation.score_at_least_15_rate,
+            "perfect_game_rate": evaluation.perfect_game_rate,
             "loss_rate": evaluation.loss_rate,
         }
         for name, evaluation in sorted(
             evaluations.items(),
             key=lambda item: (
                 -item[1].average_score,
+                -item[1].perfect_game_rate,
                 -item[1].score_at_least_15_rate,
                 item[1].loss_rate,
                 item[0],
@@ -293,6 +303,13 @@ def build_comparison_dict(
         "score_at_least_15_rate_delta": (
             left_evaluation.score_at_least_15_rate
             - right_evaluation.score_at_least_15_rate
+        ),
+        "score_at_least_24_rate_delta": (
+            left_evaluation.score_at_least_24_rate
+            - right_evaluation.score_at_least_24_rate
+        ),
+        "perfect_game_rate_delta": (
+            left_evaluation.perfect_game_rate - right_evaluation.perfect_game_rate
         ),
     }
 
@@ -357,12 +374,14 @@ def build_report_delta(
                         "score_at_least_15_rate_delta": delta[
                             "score_at_least_15_rate_delta"
                         ],
+                        "perfect_game_rate_delta": delta["perfect_game_rate_delta"],
                         "loss_rate_delta": delta["loss_rate_delta"],
                     }
                     for agent_name, delta in sorted(
                         agent_deltas.items(),
                         key=lambda item: (
                             -item[1]["average_score_delta"],
+                            -item[1]["perfect_game_rate_delta"],
                             -item[1]["score_at_least_15_rate_delta"],
                             item[1]["loss_rate_delta"],
                             item[0],
@@ -420,6 +439,18 @@ def build_evaluation_delta(
             current_evaluation["score_at_least_15_rate"]
             - previous_evaluation["score_at_least_15_rate"]
         ),
+        "score_at_least_24_rate_delta": (
+            current_evaluation["score_at_least_24_rate"]
+            - previous_evaluation["score_at_least_24_rate"]
+        ),
+        "average_gap_to_25_delta": (
+            current_evaluation["average_gap_to_25"]
+            - previous_evaluation["average_gap_to_25"]
+        ),
+        "perfect_game_rate_delta": (
+            current_evaluation["perfect_game_rate"]
+            - previous_evaluation["perfect_game_rate"]
+        ),
     }
 
 
@@ -448,6 +479,7 @@ def format_report_delta(
                 (
                     f"  {entry['agent']} | average_score_delta={entry['average_score_delta']:+.3f} "
                     f"| score_at_least_15_rate_delta={entry['score_at_least_15_rate_delta']:+.3%} "
+                    f"| perfect_game_rate_delta={entry['perfect_game_rate_delta']:+.3%} "
                     f"| loss_rate_delta={entry['loss_rate_delta']:+.3%}"
                 )
             )
@@ -493,6 +525,10 @@ def _format_evaluation(name: str, evaluation: dict[str, Any]) -> str:
             f"  loss_rate: {evaluation['loss_rate']:.3%}",
             f"  score_at_least_10_rate: {evaluation['score_at_least_10_rate']:.3%}",
             f"  score_at_least_15_rate: {evaluation['score_at_least_15_rate']:.3%}",
+            f"  score_at_least_20_rate: {evaluation['score_at_least_20_rate']:.3%}",
+            f"  score_at_least_24_rate: {evaluation['score_at_least_24_rate']:.3%}",
+            f"  average_gap_to_25: {evaluation['average_gap_to_25']:.3f}",
+            f"  perfect_game_rate: {evaluation['perfect_game_rate']:.3%}",
             "  score_distribution: "
             f"{_format_distribution(evaluation['score_distribution'])}",
         ]
@@ -520,6 +556,7 @@ def _format_table_section(result_set: dict[str, Any]) -> list[str]:
         (
             f"  {index}. {entry['agent']} | average_score={entry['average_score']:.3f} "
             f"| score_at_least_15_rate={entry['score_at_least_15_rate']:.3%} "
+            f"| perfect_game_rate={entry['perfect_game_rate']:.3%} "
             f"| loss_rate={entry['loss_rate']:.3%}"
         )
         for index, entry in enumerate(result_set["ranking"], start=1)
@@ -554,6 +591,14 @@ def _format_comparison(label: str, comparison: dict[str, float]) -> str:
             (
                 "  score_at_least_15_rate_delta: "
                 f"{comparison['score_at_least_15_rate_delta']:.3%}"
+            ),
+            (
+                "  score_at_least_24_rate_delta: "
+                f"{comparison['score_at_least_24_rate_delta']:.3%}"
+            ),
+            (
+                "  perfect_game_rate_delta: "
+                f"{comparison['perfect_game_rate_delta']:.3%}"
             ),
         ]
     )

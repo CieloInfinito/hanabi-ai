@@ -1,0 +1,761 @@
+{
+  "config": {
+    "player_counts": [
+      2
+    ],
+    "game_count": 30,
+    "seed_base": 0,
+    "agent_seed_base": 1000
+  },
+  "result_sets": [
+    {
+      "player_count": 2,
+      "evaluations": {
+        "BasicHeuristicAgent": {
+          "game_count": 30,
+          "player_count": 2,
+          "average_score": 14.3,
+          "median_score": 15.0,
+          "min_score": 6,
+          "max_score": 19,
+          "average_turn_count": 74.9,
+          "average_hint_tokens": 0.3,
+          "average_strike_tokens": 0.0,
+          "average_completed_stacks": 0.9,
+          "average_play_actions": 14.3,
+          "average_successful_plays": 14.3,
+          "average_failed_plays": 0.0,
+          "average_discards": 26.0,
+          "average_hints_given": 34.6,
+          "successful_play_rate": 1.0,
+          "win_rate": 0.0,
+          "loss_rate": 0.0,
+          "score_at_least_10_rate": 0.9333333333333333,
+          "score_at_least_15_rate": 0.5333333333333333,
+          "score_at_least_20_rate": 0.0,
+          "score_at_least_24_rate": 0.0,
+          "average_gap_to_25": 10.7,
+          "perfect_game_rate": 0.0,
+          "score_distribution": [
+            [
+              6,
+              1
+            ],
+            [
+              9,
+              1
+            ],
+            [
+              10,
+              1
+            ],
+            [
+              11,
+              2
+            ],
+            [
+              12,
+              3
+            ],
+            [
+              13,
+              2
+            ],
+            [
+              14,
+              4
+            ],
+            [
+              15,
+              5
+            ],
+            [
+              16,
+              5
+            ],
+            [
+              17,
+              2
+            ],
+            [
+              18,
+              1
+            ],
+            [
+              19,
+              3
+            ]
+          ]
+        },
+        "ConventionHeuristicAgent": {
+          "game_count": 30,
+          "player_count": 2,
+          "average_score": 14.366666666666667,
+          "median_score": 14.5,
+          "min_score": 6,
+          "max_score": 20,
+          "average_turn_count": 75.16666666666667,
+          "average_hint_tokens": 0.5,
+          "average_strike_tokens": 0.0,
+          "average_completed_stacks": 0.9666666666666667,
+          "average_play_actions": 14.366666666666667,
+          "average_successful_plays": 14.366666666666667,
+          "average_failed_plays": 0.0,
+          "average_discards": 26.166666666666668,
+          "average_hints_given": 34.63333333333333,
+          "successful_play_rate": 1.0,
+          "win_rate": 0.0,
+          "loss_rate": 0.0,
+          "score_at_least_10_rate": 0.9666666666666667,
+          "score_at_least_15_rate": 0.5,
+          "score_at_least_20_rate": 0.03333333333333333,
+          "score_at_least_24_rate": 0.0,
+          "average_gap_to_25": 10.633333333333333,
+          "perfect_game_rate": 0.0,
+          "score_distribution": [
+            [
+              6,
+              1
+            ],
+            [
+              10,
+              2
+            ],
+            [
+              11,
+              4
+            ],
+            [
+              12,
+              1
+            ],
+            [
+              13,
+              4
+            ],
+            [
+              14,
+              3
+            ],
+            [
+              15,
+              3
+            ],
+            [
+              16,
+              4
+            ],
+            [
+              17,
+              1
+            ],
+            [
+              18,
+              5
+            ],
+            [
+              19,
+              1
+            ],
+            [
+              20,
+              1
+            ]
+          ]
+        },
+        "ConventionTempoHeuristicAgent": {
+          "game_count": 30,
+          "player_count": 2,
+          "average_score": 15.733333333333333,
+          "median_score": 15.0,
+          "min_score": 12,
+          "max_score": 21,
+          "average_turn_count": 73.56666666666666,
+          "average_hint_tokens": 0.7666666666666667,
+          "average_strike_tokens": 0.0,
+          "average_completed_stacks": 1.2666666666666666,
+          "average_play_actions": 15.733333333333333,
+          "average_successful_plays": 15.733333333333333,
+          "average_failed_plays": 0.0,
+          "average_discards": 24.666666666666668,
+          "average_hints_given": 33.166666666666664,
+          "successful_play_rate": 1.0,
+          "win_rate": 0.0,
+          "loss_rate": 0.0,
+          "score_at_least_10_rate": 1.0,
+          "score_at_least_15_rate": 0.6333333333333333,
+          "score_at_least_20_rate": 0.16666666666666666,
+          "score_at_least_24_rate": 0.0,
+          "average_gap_to_25": 9.266666666666667,
+          "perfect_game_rate": 0.0,
+          "score_distribution": [
+            [
+              12,
+              3
+            ],
+            [
+              13,
+              4
+            ],
+            [
+              14,
+              4
+            ],
+            [
+              15,
+              5
+            ],
+            [
+              16,
+              4
+            ],
+            [
+              17,
+              4
+            ],
+            [
+              18,
+              1
+            ],
+            [
+              20,
+              2
+            ],
+            [
+              21,
+              3
+            ]
+          ]
+        },
+        "LargeTableHeuristicAgent": {
+          "game_count": 30,
+          "player_count": 2,
+          "average_score": 15.733333333333333,
+          "median_score": 15.0,
+          "min_score": 12,
+          "max_score": 21,
+          "average_turn_count": 73.56666666666666,
+          "average_hint_tokens": 0.7666666666666667,
+          "average_strike_tokens": 0.0,
+          "average_completed_stacks": 1.2666666666666666,
+          "average_play_actions": 15.733333333333333,
+          "average_successful_plays": 15.733333333333333,
+          "average_failed_plays": 0.0,
+          "average_discards": 24.666666666666668,
+          "average_hints_given": 33.166666666666664,
+          "successful_play_rate": 1.0,
+          "win_rate": 0.0,
+          "loss_rate": 0.0,
+          "score_at_least_10_rate": 1.0,
+          "score_at_least_15_rate": 0.6333333333333333,
+          "score_at_least_20_rate": 0.16666666666666666,
+          "score_at_least_24_rate": 0.0,
+          "average_gap_to_25": 9.266666666666667,
+          "perfect_game_rate": 0.0,
+          "score_distribution": [
+            [
+              12,
+              3
+            ],
+            [
+              13,
+              4
+            ],
+            [
+              14,
+              4
+            ],
+            [
+              15,
+              5
+            ],
+            [
+              16,
+              4
+            ],
+            [
+              17,
+              4
+            ],
+            [
+              18,
+              1
+            ],
+            [
+              20,
+              2
+            ],
+            [
+              21,
+              3
+            ]
+          ]
+        },
+        "SearchHeuristicAgent": {
+          "game_count": 30,
+          "player_count": 2,
+          "average_score": 15.7,
+          "median_score": 15.5,
+          "min_score": 11,
+          "max_score": 21,
+          "average_turn_count": 73.7,
+          "average_hint_tokens": 0.5,
+          "average_strike_tokens": 0.0,
+          "average_completed_stacks": 1.3666666666666667,
+          "average_play_actions": 15.7,
+          "average_successful_plays": 15.7,
+          "average_failed_plays": 0.0,
+          "average_discards": 24.566666666666666,
+          "average_hints_given": 33.43333333333333,
+          "successful_play_rate": 1.0,
+          "win_rate": 0.0,
+          "loss_rate": 0.0,
+          "score_at_least_10_rate": 1.0,
+          "score_at_least_15_rate": 0.6333333333333333,
+          "score_at_least_20_rate": 0.16666666666666666,
+          "score_at_least_24_rate": 0.0,
+          "average_gap_to_25": 9.3,
+          "perfect_game_rate": 0.0,
+          "score_distribution": [
+            [
+              11,
+              1
+            ],
+            [
+              12,
+              5
+            ],
+            [
+              13,
+              3
+            ],
+            [
+              14,
+              2
+            ],
+            [
+              15,
+              4
+            ],
+            [
+              16,
+              4
+            ],
+            [
+              17,
+              3
+            ],
+            [
+              18,
+              2
+            ],
+            [
+              19,
+              1
+            ],
+            [
+              20,
+              2
+            ],
+            [
+              21,
+              3
+            ]
+          ]
+        },
+        "TempoHeuristicAgent": {
+          "game_count": 30,
+          "player_count": 2,
+          "average_score": 15.3,
+          "median_score": 15.5,
+          "min_score": 8,
+          "max_score": 22,
+          "average_turn_count": 73.86666666666666,
+          "average_hint_tokens": 0.6333333333333333,
+          "average_strike_tokens": 0.0,
+          "average_completed_stacks": 1.2,
+          "average_play_actions": 15.3,
+          "average_successful_plays": 15.3,
+          "average_failed_plays": 0.0,
+          "average_discards": 25.0,
+          "average_hints_given": 33.56666666666667,
+          "successful_play_rate": 1.0,
+          "win_rate": 0.0,
+          "loss_rate": 0.0,
+          "score_at_least_10_rate": 0.9333333333333333,
+          "score_at_least_15_rate": 0.6,
+          "score_at_least_20_rate": 0.2,
+          "score_at_least_24_rate": 0.0,
+          "average_gap_to_25": 9.7,
+          "perfect_game_rate": 0.0,
+          "score_distribution": [
+            [
+              8,
+              1
+            ],
+            [
+              9,
+              1
+            ],
+            [
+              11,
+              3
+            ],
+            [
+              12,
+              3
+            ],
+            [
+              14,
+              4
+            ],
+            [
+              15,
+              3
+            ],
+            [
+              16,
+              6
+            ],
+            [
+              17,
+              2
+            ],
+            [
+              18,
+              1
+            ],
+            [
+              20,
+              3
+            ],
+            [
+              21,
+              2
+            ],
+            [
+              22,
+              1
+            ]
+          ]
+        },
+        "RandomAgent": {
+          "game_count": 30,
+          "player_count": 2,
+          "average_score": 1.2,
+          "median_score": 1.0,
+          "min_score": 0,
+          "max_score": 4,
+          "average_turn_count": 13.1,
+          "average_hint_tokens": 4.5,
+          "average_strike_tokens": 3.0,
+          "average_completed_stacks": 0.0,
+          "average_play_actions": 4.2,
+          "average_successful_plays": 1.2,
+          "average_failed_plays": 3.0,
+          "average_discards": 2.7,
+          "average_hints_given": 6.2,
+          "successful_play_rate": 0.2857142857142857,
+          "win_rate": 0.0,
+          "loss_rate": 1.0,
+          "score_at_least_10_rate": 0.0,
+          "score_at_least_15_rate": 0.0,
+          "score_at_least_20_rate": 0.0,
+          "score_at_least_24_rate": 0.0,
+          "average_gap_to_25": 23.8,
+          "perfect_game_rate": 0.0,
+          "score_distribution": [
+            [
+              0,
+              9
+            ],
+            [
+              1,
+              9
+            ],
+            [
+              2,
+              10
+            ],
+            [
+              3,
+              1
+            ],
+            [
+              4,
+              1
+            ]
+          ]
+        }
+      },
+      "comparisons": {
+        "Basic vs Random": {
+          "average_score_delta": 13.100000000000001,
+          "average_turn_count_delta": 61.800000000000004,
+          "average_completed_stacks_delta": 0.9,
+          "win_rate_delta": 0.0,
+          "loss_rate_delta": -1.0,
+          "score_at_least_10_rate_delta": 0.9333333333333333,
+          "score_at_least_15_rate_delta": 0.5333333333333333,
+          "score_at_least_24_rate_delta": 0.0,
+          "perfect_game_rate_delta": 0.0
+        },
+        "Convention vs Random": {
+          "average_score_delta": 13.166666666666668,
+          "average_turn_count_delta": 62.06666666666667,
+          "average_completed_stacks_delta": 0.9666666666666667,
+          "win_rate_delta": 0.0,
+          "loss_rate_delta": -1.0,
+          "score_at_least_10_rate_delta": 0.9666666666666667,
+          "score_at_least_15_rate_delta": 0.5,
+          "score_at_least_24_rate_delta": 0.0,
+          "perfect_game_rate_delta": 0.0
+        },
+        "Convention vs Basic": {
+          "average_score_delta": 0.06666666666666643,
+          "average_turn_count_delta": 0.2666666666666657,
+          "average_completed_stacks_delta": 0.06666666666666665,
+          "win_rate_delta": 0.0,
+          "loss_rate_delta": 0.0,
+          "score_at_least_10_rate_delta": 0.033333333333333326,
+          "score_at_least_15_rate_delta": -0.033333333333333326,
+          "score_at_least_24_rate_delta": 0.0,
+          "perfect_game_rate_delta": 0.0
+        },
+        "ConventionTempo vs Convention": {
+          "average_score_delta": 1.3666666666666654,
+          "average_turn_count_delta": -1.6000000000000085,
+          "average_completed_stacks_delta": 0.29999999999999993,
+          "win_rate_delta": 0.0,
+          "loss_rate_delta": 0.0,
+          "score_at_least_10_rate_delta": 0.033333333333333326,
+          "score_at_least_15_rate_delta": 0.1333333333333333,
+          "score_at_least_24_rate_delta": 0.0,
+          "perfect_game_rate_delta": 0.0
+        },
+        "ConventionTempo vs Tempo": {
+          "average_score_delta": 0.4333333333333318,
+          "average_turn_count_delta": -0.29999999999999716,
+          "average_completed_stacks_delta": 0.06666666666666665,
+          "win_rate_delta": 0.0,
+          "loss_rate_delta": 0.0,
+          "score_at_least_10_rate_delta": 0.06666666666666665,
+          "score_at_least_15_rate_delta": 0.033333333333333326,
+          "score_at_least_24_rate_delta": 0.0,
+          "perfect_game_rate_delta": 0.0
+        },
+        "ConventionTempo vs Basic": {
+          "average_score_delta": 1.4333333333333318,
+          "average_turn_count_delta": -1.3333333333333428,
+          "average_completed_stacks_delta": 0.3666666666666666,
+          "win_rate_delta": 0.0,
+          "loss_rate_delta": 0.0,
+          "score_at_least_10_rate_delta": 0.06666666666666665,
+          "score_at_least_15_rate_delta": 0.09999999999999998,
+          "score_at_least_24_rate_delta": 0.0,
+          "perfect_game_rate_delta": 0.0
+        },
+        "LargeTable vs ConventionTempo": {
+          "average_score_delta": 0.0,
+          "average_turn_count_delta": 0.0,
+          "average_completed_stacks_delta": 0.0,
+          "win_rate_delta": 0.0,
+          "loss_rate_delta": 0.0,
+          "score_at_least_10_rate_delta": 0.0,
+          "score_at_least_15_rate_delta": 0.0,
+          "score_at_least_24_rate_delta": 0.0,
+          "perfect_game_rate_delta": 0.0
+        },
+        "LargeTable vs Tempo": {
+          "average_score_delta": 0.4333333333333318,
+          "average_turn_count_delta": -0.29999999999999716,
+          "average_completed_stacks_delta": 0.06666666666666665,
+          "win_rate_delta": 0.0,
+          "loss_rate_delta": 0.0,
+          "score_at_least_10_rate_delta": 0.06666666666666665,
+          "score_at_least_15_rate_delta": 0.033333333333333326,
+          "score_at_least_24_rate_delta": 0.0,
+          "perfect_game_rate_delta": 0.0
+        },
+        "LargeTable vs Basic": {
+          "average_score_delta": 1.4333333333333318,
+          "average_turn_count_delta": -1.3333333333333428,
+          "average_completed_stacks_delta": 0.3666666666666666,
+          "win_rate_delta": 0.0,
+          "loss_rate_delta": 0.0,
+          "score_at_least_10_rate_delta": 0.06666666666666665,
+          "score_at_least_15_rate_delta": 0.09999999999999998,
+          "score_at_least_24_rate_delta": 0.0,
+          "perfect_game_rate_delta": 0.0
+        },
+        "Search vs ConventionTempo": {
+          "average_score_delta": -0.033333333333333215,
+          "average_turn_count_delta": 0.13333333333333997,
+          "average_completed_stacks_delta": 0.10000000000000009,
+          "win_rate_delta": 0.0,
+          "loss_rate_delta": 0.0,
+          "score_at_least_10_rate_delta": 0.0,
+          "score_at_least_15_rate_delta": 0.0,
+          "score_at_least_24_rate_delta": 0.0,
+          "perfect_game_rate_delta": 0.0
+        },
+        "Search vs Basic": {
+          "average_score_delta": 1.3999999999999986,
+          "average_turn_count_delta": -1.2000000000000028,
+          "average_completed_stacks_delta": 0.4666666666666667,
+          "win_rate_delta": 0.0,
+          "loss_rate_delta": 0.0,
+          "score_at_least_10_rate_delta": 0.06666666666666665,
+          "score_at_least_15_rate_delta": 0.09999999999999998,
+          "score_at_least_24_rate_delta": 0.0,
+          "perfect_game_rate_delta": 0.0
+        },
+        "LargeTable vs Random": {
+          "average_score_delta": 14.533333333333333,
+          "average_turn_count_delta": 60.46666666666666,
+          "average_completed_stacks_delta": 1.2666666666666666,
+          "win_rate_delta": 0.0,
+          "loss_rate_delta": -1.0,
+          "score_at_least_10_rate_delta": 1.0,
+          "score_at_least_15_rate_delta": 0.6333333333333333,
+          "score_at_least_24_rate_delta": 0.0,
+          "perfect_game_rate_delta": 0.0
+        },
+        "ConventionTempo vs Random": {
+          "average_score_delta": 14.533333333333333,
+          "average_turn_count_delta": 60.46666666666666,
+          "average_completed_stacks_delta": 1.2666666666666666,
+          "win_rate_delta": 0.0,
+          "loss_rate_delta": -1.0,
+          "score_at_least_10_rate_delta": 1.0,
+          "score_at_least_15_rate_delta": 0.6333333333333333,
+          "score_at_least_24_rate_delta": 0.0,
+          "perfect_game_rate_delta": 0.0
+        },
+        "Search vs Random": {
+          "average_score_delta": 14.5,
+          "average_turn_count_delta": 60.6,
+          "average_completed_stacks_delta": 1.3666666666666667,
+          "win_rate_delta": 0.0,
+          "loss_rate_delta": -1.0,
+          "score_at_least_10_rate_delta": 1.0,
+          "score_at_least_15_rate_delta": 0.6333333333333333,
+          "score_at_least_24_rate_delta": 0.0,
+          "perfect_game_rate_delta": 0.0
+        },
+        "Tempo vs Basic": {
+          "average_score_delta": 1.0,
+          "average_turn_count_delta": -1.0333333333333456,
+          "average_completed_stacks_delta": 0.29999999999999993,
+          "win_rate_delta": 0.0,
+          "loss_rate_delta": 0.0,
+          "score_at_least_10_rate_delta": 0.0,
+          "score_at_least_15_rate_delta": 0.06666666666666665,
+          "score_at_least_24_rate_delta": 0.0,
+          "perfect_game_rate_delta": 0.0
+        },
+        "Tempo vs Random": {
+          "average_score_delta": 14.100000000000001,
+          "average_turn_count_delta": 60.76666666666666,
+          "average_completed_stacks_delta": 1.2,
+          "win_rate_delta": 0.0,
+          "loss_rate_delta": -1.0,
+          "score_at_least_10_rate_delta": 0.9333333333333333,
+          "score_at_least_15_rate_delta": 0.6,
+          "score_at_least_24_rate_delta": 0.0,
+          "perfect_game_rate_delta": 0.0
+        }
+      },
+      "ranking": [
+        {
+          "agent": "ConventionTempoHeuristicAgent",
+          "average_score": 15.733333333333333,
+          "score_at_least_15_rate": 0.6333333333333333,
+          "perfect_game_rate": 0.0,
+          "loss_rate": 0.0
+        },
+        {
+          "agent": "LargeTableHeuristicAgent",
+          "average_score": 15.733333333333333,
+          "score_at_least_15_rate": 0.6333333333333333,
+          "perfect_game_rate": 0.0,
+          "loss_rate": 0.0
+        },
+        {
+          "agent": "SearchHeuristicAgent",
+          "average_score": 15.7,
+          "score_at_least_15_rate": 0.6333333333333333,
+          "perfect_game_rate": 0.0,
+          "loss_rate": 0.0
+        },
+        {
+          "agent": "TempoHeuristicAgent",
+          "average_score": 15.3,
+          "score_at_least_15_rate": 0.6,
+          "perfect_game_rate": 0.0,
+          "loss_rate": 0.0
+        },
+        {
+          "agent": "ConventionHeuristicAgent",
+          "average_score": 14.366666666666667,
+          "score_at_least_15_rate": 0.5,
+          "perfect_game_rate": 0.0,
+          "loss_rate": 0.0
+        },
+        {
+          "agent": "BasicHeuristicAgent",
+          "average_score": 14.3,
+          "score_at_least_15_rate": 0.5333333333333333,
+          "perfect_game_rate": 0.0,
+          "loss_rate": 0.0
+        },
+        {
+          "agent": "RandomAgent",
+          "average_score": 1.2,
+          "score_at_least_15_rate": 0.0,
+          "perfect_game_rate": 0.0,
+          "loss_rate": 1.0
+        }
+      ]
+    }
+  ],
+  "aggregate_average_score_by_agent": {
+    "BasicHeuristicAgent": 14.3,
+    "ConventionHeuristicAgent": 14.366666666666667,
+    "ConventionTempoHeuristicAgent": 15.733333333333333,
+    "LargeTableHeuristicAgent": 15.733333333333333,
+    "SearchHeuristicAgent": 15.7,
+    "TempoHeuristicAgent": 15.3,
+    "RandomAgent": 1.2
+  },
+  "aggregate_ranking": [
+    {
+      "agent": "ConventionTempoHeuristicAgent",
+      "average_score": 15.733333333333333
+    },
+    {
+      "agent": "LargeTableHeuristicAgent",
+      "average_score": 15.733333333333333
+    },
+    {
+      "agent": "SearchHeuristicAgent",
+      "average_score": 15.7
+    },
+    {
+      "agent": "TempoHeuristicAgent",
+      "average_score": 15.3
+    },
+    {
+      "agent": "ConventionHeuristicAgent",
+      "average_score": 14.366666666666667
+    },
+    {
+      "agent": "BasicHeuristicAgent",
+      "average_score": 14.3
+    },
+    {
+      "agent": "RandomAgent",
+      "average_score": 1.2
+    }
+  ]
+}

@@ -18,6 +18,17 @@ class CompareAgentDecisionsToolTests(unittest.TestCase):
         self.assertIn("=== Agent Decision Comparison ===", rendered)
         self.assertIn("Final scores | Left:", rendered)
 
+    def test_compare_agents_supports_search_agent(self) -> None:
+        rendered = compare_agents(
+            player_count=2,
+            seed=0,
+            left_agent_name="search",
+            right_agent_name="convention-tempo",
+            show_all=False,
+        )
+
+        self.assertIn("Left agent: search", rendered)
+
 
 if __name__ == "__main__":
     unittest.main()
