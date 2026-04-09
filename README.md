@@ -1,9 +1,35 @@
-# Hanabi AI
+# "To win, or not to win. That is the question"
 
-Hanabi AI is a small research-oriented Python project for building and testing
-Hanabi agents without leaking hidden information.
+This is a research project with one solitary goal:
 
-The project has three goals:
+**to determine whether Hanabi can be played well enough to win every game, 
+for any player count, when all players act as well as possible**
+
+That is, to say: 
+** is it possible to win every game, from start to finish, even with no luck involved?**
+
+Everything in this repository exists to answer this "yes or no" question.
+
+We (just me, really) don't really care whether this helps to expand the AI reaserch window,
+explore new frontiers, or whatever. The engine, observation model, benchmarks,
+traces, agents, and so forth are not the end goal by themselves.
+
+They are the infrastructure needed to study the real question.
+
+## Exodia, The Forbidden One
+
+This is not about making a technical exhibition here. It's about a geek
+trying to win the game. Every game. To do that, we'll use AI and see
+what happens. No big deal, really.
+
+Hence, *how* this question will be answered is whether or not the 
+"perfect agent" can be assembled. We'll call him "Exodia". Since
+it is my child, I get to name him. See Yu-Gi-Oh for reference.
+
+## Coming back to Earth
+
+In practice, the project currently advances toward that goal through three
+immediate subgoals:
 
 1. Model the real Hanabi game correctly.
 2. Give each player only the information they are allowed to see.
@@ -11,7 +37,8 @@ The project has three goals:
 
 ## What Is In The Repo
 
-Today the repository already includes a complete vertical slice:
+Today the repository already includes a complete vertical slice of that
+research stack:
 
 - a typed Hanabi engine
 - partial observations for each player
